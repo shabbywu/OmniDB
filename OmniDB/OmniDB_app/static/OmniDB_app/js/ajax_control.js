@@ -134,7 +134,7 @@ function cancelAjax() {
  	var csrftoken = getCookie(v_csrf_cookie_name);
 	// Requesting data with ajax.
  	v_ajax_call = $.ajax({
- 		url: v_url_folder + p_url,
+ 		url: v_url_folder + p_url + location.search,
  		data: {
  			data: p_data,
  			tab_token: ''

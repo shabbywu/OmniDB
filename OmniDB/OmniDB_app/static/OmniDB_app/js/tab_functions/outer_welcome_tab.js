@@ -137,36 +137,31 @@ var v_createWelcomeTabFunction = function(p_index,p_create_query_tab = true, p_n
   </svg>`;
 
 
+  // 欢迎标题
   // Title html string
-  let v_html_title =
-  '<h1 class="mb-4" style="padding-left: 100px; position: relative;">' +
-    // '<span class="omnidb__welcome__loading"></span>' +
-    '<span class="omnidb__welcome__loading" style="background: none;">' + v_animated_omnis + '</span>' +
-    '<span class="omnidb__welcome__intro-text">Hi, welcome to <span style="color:#4a6cbb;">OmniDB!</span></span>' +
-  '</h1>';
+  let v_html_title = `\
+  <h1 class="mb-4" style="padding-left: 100px; position: relative;">
+    <span class="omnidb__welcome__loading" style="background: none; top: -24px;"> ${v_animated_omnis} </span>
+    <span class="omnidb__welcome__intro-text">Hi, welcome to <span style="color:#4a6cbb;">OmniDB!</span></span>
+  </h1>
+  `;
+
   // Intro html string
-  let v_html_intro =
-  '<div class="card p-3 omnidb__welcome__intro-card">' +
-
-    '<p class="text-center"><span class="badge badge-danger" style="vertical-align: middle;">disclaimer</span> OmniDB is a powerful tool, and with great power...<br/>Please <strong><span class="text-danger">learn how to use it on a testing environment, NOT on production</span></strong>!</p>' +
-
-
-    '<button type="button" class="btn btn-lg omnidb__theme__btn--primary w-auto mx-auto my-4" onclick="startTutorial(' + "'getting_started'" + ');">' +
-      '<i class="fas fa-list mr-2"></i>' +
-      'Getting started' +
-    '</button>' +
-
-
-    '<div class="alert-info p-2 rounded mt-4" style="display: grid; grid-template: \'icon text\';">' +
-      '<i class="fas fa-exclamation-triangle p-4" style="grid-area: icon;"></i>' +
-      '<div style="grid-area: text;">' +
-        `
-        Our focus is to provide a very flexible, secure and work-effective environment for multiple DBMS.<br>
-        With that in mind, you should <strong>be aware the many actions on the UI can lead to a direct interaction with the database</strong> that you are connected with.</br>
-        ` +
-      '</div>' +
-    '</div>' +
-  '</div>';
+  let v_html_intro = `\
+  <div class="card p-3 omnidb__welcome__intro-card">
+    <p class="text-center"><span class="badge badge-danger" style="vertical-align: middle;">disclaimer</span> OmniDB is a powerful tool, and with great power...<br/>Please <strong><span class="text-danger">learn how to use it on a testing environment, NOT on production</span></strong>!</p>
+    <button type="button" class="btn btn-lg omnidb__theme__btn--primary w-auto mx-auto my-4" onclick="startTutorial('getting_started');">
+        <i class="fas fa-list mr-2"></i> Getting started
+    </button>
+    <div class="alert-info p-2 rounded mt-4" style="display: grid; grid-template: 'icon text';">
+      <i class="fas fa-exclamation-triangle p-4" style="grid-area: icon;"></i>
+      <div style="grid-area: text;">
+          Our focus is to provide a very flexible, secure and work-effective environment for multiple DBMS.<br>
+          With that in mind, you should <strong>be aware the many actions on the UI can lead to a direct interaction with the database</strong> that you are connected with.</br>
+       </div>
+    </div>
+  </div>
+`;
   // Getting started buttons
   // let v_getting_started_buttons_list = [
   //   {

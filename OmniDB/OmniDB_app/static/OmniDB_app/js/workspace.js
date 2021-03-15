@@ -57,6 +57,7 @@ $(function () {
       }
     );
 
+    // 屏蔽 Connections 按钮
     v_connTabControl.createTab({
       p_icon: `<svg class="omnidb-icon__theme--branding" height="27" viewBox="0 0 58 58" xmlns="http://www.w3.org/2000/svg">
                 <path d="M40.8635 21.9291C39.8124 20.2722 38.403 18.8703 36.7378 17.827C37.1953 18.7168 37.5976 19.6889 37.9355 20.7357C38.9901 21.0739 39.9683 21.4761 40.8635 21.9291Z" fill="#878FC6"/>

@@ -28,7 +28,7 @@ SOFTWARE.
 
 function checkSessionMessage() {
 
-	execAjax('/check_session_message/',
+	execAjax('/check_session_message/' + location.search,
 				JSON.stringify({}),
         function(p_return) {
           if (p_return.v_data!='')

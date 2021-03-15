@@ -46,14 +46,18 @@ function startTutorial(p_tutorial_name) {
   // Setting the tutorial to the default example tutorial `main`.
   var v_tutorial_name = (p_tutorial_name) ? p_tutorial_name : 'main';
   var v_button_inner_query_attr = ' disabled title="Open a new connection first." ';
-  if (v_connTabControl.selectedTab.tag.tabControl) {
-    if (v_connTabControl.selectedTab.tag.tabControl.tabList.length > 0) {
-      v_button_inner_query_attr = '';
+
+  var v_connection_tab = v_connTabControl.tabList.filter(item=>(item.tag && item.tag.mode === 'connection'))[0]
+  window.__switch_to_connection_tab__ = function () {}
+  if (v_connection_tab !== undefined) {
+    v_button_inner_query_attr = '';
+    window.__switch_to_connection_tab__ = function () {
+      v_connection_tab.tag.connTabControl.selectTab(v_connection_tab)
     }
   }
   var v_button_inner_query =
   '<li class="mb-2">' +
-    `<button ` + v_button_inner_query_attr + ` type="button" class="btn omnidb__theme__btn--primary d-flex align-items-center" onclick="startTutorial('connection_tab');">` +
+    `<button ` + v_button_inner_query_attr + ` type="button" class="btn omnidb__theme__btn--primary d-flex align-items-center" onclick="__switch_to_connection_tab__();startTutorial('connection_tab');">` +
       '<i class="fas fa-list mr-2"></i>The Connection Tab' +
     '</button>' +
   '</li>';
@@ -503,11 +507,6 @@ function startTutorial(p_tutorial_name) {
         <li class="mb-2">
           <button type="button" class="btn omnidb__theme__btn--primary d-flex align-items-center" onclick="startTutorial('snippets');">
             <i class="fas fa-book mr-2"></i>Meet the snippets panel
-          </button>
-        </li>
-        <li class="mb-2">
-          <button type="button" class="btn omnidb__theme__btn--primary d-flex align-items-center" onclick="startTutorial('selecting_connection');">
-            <i class="fas fa-plus mr-2"></i>Using a connection
           </button>
         </li>
         ` +

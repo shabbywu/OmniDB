@@ -145,7 +145,7 @@
 				function(p_return) {
 
 					if (p_return.v_data>=0) {
-						window.open(v_url_folder + "/workspace", '_self');
+						window.open(v_url_folder + "/workspace/" + location.search, '_self');
 					}
 					else if (p_return.v_data==-2) {
 						showAlert('Invalid authentication token, use omnidb-server to support multiple users.');

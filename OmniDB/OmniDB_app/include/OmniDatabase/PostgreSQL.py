@@ -1,4 +1,4 @@
-'''
+"""
 The MIT License (MIT)
 
 Portions Copyright (c) 2015-2019, The OmniDB Team
@@ -21,113 +21,139 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
+import hashlib
 import os.path
 import re
+import threading
 from collections import OrderedDict
 from enum import Enum
+from urllib.parse import urlparse
+
 import OmniDB_app.include.Spartacus as Spartacus
 import OmniDB_app.include.Spartacus.Database as Database
 import OmniDB_app.include.Spartacus.Utils as Utils
-from urllib.parse import urlparse
 
-import threading
-import hashlib
 
-'''
+"""
 ------------------------------------------------------------------------
 Template
 ------------------------------------------------------------------------
-'''
+"""
+
+
 class TemplateType(Enum):
     EXECUTE = 1
     SCRIPT = 2
+
 
 class Template:
     def __init__(self, p_text, p_type=TemplateType.EXECUTE):
         self.v_text = p_text
         self.v_type = p_type
 
-'''
+
+"""
 ------------------------------------------------------------------------
 PostgreSQL
 ------------------------------------------------------------------------
-'''
+"""
+
+
 class PostgreSQL:
-    def __init__(self, p_server, p_port, p_service, p_user, p_password, p_conn_id=0, p_alias='', p_application_name='OmniDB', p_conn_string='', p_parse_conn_string = False):
+    def __init__(
+        self,
+        p_server,
+        p_port,
+        p_service,
+        p_user,
+        p_password,
+        p_conn_id=0,
+        p_alias="",
+        p_application_name="OmniDB",
+        p_conn_string="",
+        p_parse_conn_string=False,
+    ):
         self.lock = None
 
         self.v_alias = p_alias
-        self.v_db_type = 'postgresql'
+        self.v_db_type = "postgresql"
         self.v_conn_id = p_conn_id
         self.v_conn_string = p_conn_string
-        self.v_conn_string_error = ''
+        self.v_conn_string_error = ""
         self.v_password = p_password
         self.v_port = p_port
-        if p_port is None or p_port == '':
-            self.v_active_port = '5432'
+        if p_port is None or p_port == "":
+            self.v_active_port = "5432"
         else:
             self.v_active_port = p_port
         self.v_service = p_service
-        if p_service is None or p_service == '':
-            self.v_active_service = 'postgres'
+        if p_service is None or p_service == "":
+            self.v_active_service = "postgres"
         else:
             self.v_active_service = p_service
         self.v_server = p_server
         self.v_active_server = p_server
         self.v_user = p_user
         self.v_active_user = p_user
-        self.v_conn_string_query = ''
-        #try to get info from connection string
-        if p_conn_string!='' and p_parse_conn_string:
+        self.v_conn_string_query = ""
+        # try to get info from connection string
+        if p_conn_string != "" and p_parse_conn_string:
             try:
                 parsed = urlparse(p_conn_string)
-                if parsed.port!=None:
+                if parsed.port != None:
                     self.v_active_port = str(parsed.port)
-                if parsed.hostname!=None:
+                if parsed.hostname != None:
                     self.v_active_server = parsed.hostname
-                if parsed.username!=None:
+                if parsed.username != None:
                     self.v_active_user = parsed.username
-                if parsed.password!=None and p_password == '':
+                if parsed.password != None and p_password == "":
                     self.v_password = parsed.password
-                if parsed.query!=None:
+                if parsed.query != None:
                     self.v_conn_string_query = parsed.query
                 parsed_database = parsed.path
-                if len(parsed_database)>1:
+                if len(parsed_database) > 1:
                     self.v_active_service = parsed_database[1:]
             except Exception as exc:
-                self.v_conn_string_error = 'Syntax error in the connection string.'
+                self.v_conn_string_error = "Syntax error in the connection string."
                 None
 
-        self.v_schema = 'public'
-        self.v_connection = Spartacus.Database.PostgreSQL(self.v_active_server, self.v_active_port, self.v_active_service, self.v_active_user, self.v_password, p_application_name, p_conn_string)
+        self.v_schema = "public"
+        self.v_connection = Spartacus.Database.PostgreSQL(
+            self.v_active_server,
+            self.v_active_port,
+            self.v_active_service,
+            self.v_active_user,
+            self.v_password,
+            p_application_name,
+            p_conn_string,
+        )
 
         self.v_data_types = {
-            'bigint': { 'quoted': False },
-            'bigserial': { 'quoted': False },
-            'char': { 'quoted': True },
-            'character': { 'quoted': True },
-            'character varying': { 'quoted': True },
-            'date': { 'quoted': True },
-            'decimal': { 'quoted': False },
-            'double precision': { 'quoted': False },
-            'float': { 'quoted': False },
-            'integer': { 'quoted': False },
-            'money': { 'quoted': False },
-            'numeric': { 'quoted': False },
-            'real': { 'quoted': False },
-            'serial': { 'quoted': False },
-            'smallint': { 'quoted': False },
-            'smallserial': { 'quoted': False },
-            'text': { 'quoted': True },
-            'time with time zone': { 'quoted': True },
-            'time without time zone': { 'quoted': True },
-            'timestamp with time zone': { 'quoted': True },
-            'timestamp without time zone': { 'quoted': True },
-            'varchar': { 'quoted': True }
+            "bigint": {"quoted": False},
+            "bigserial": {"quoted": False},
+            "char": {"quoted": True},
+            "character": {"quoted": True},
+            "character varying": {"quoted": True},
+            "date": {"quoted": True},
+            "decimal": {"quoted": False},
+            "double precision": {"quoted": False},
+            "float": {"quoted": False},
+            "integer": {"quoted": False},
+            "money": {"quoted": False},
+            "numeric": {"quoted": False},
+            "real": {"quoted": False},
+            "serial": {"quoted": False},
+            "smallint": {"quoted": False},
+            "smallserial": {"quoted": False},
+            "text": {"quoted": True},
+            "time with time zone": {"quoted": True},
+            "time without time zone": {"quoted": True},
+            "timestamp with time zone": {"quoted": True},
+            "timestamp without time zone": {"quoted": True},
+            "varchar": {"quoted": True},
         }
-
 
         self.v_has_schema = True
         self.v_has_functions = True
@@ -146,17 +172,31 @@ class PostgreSQL:
 
         self.v_has_update_rule = True
         self.v_can_rename_table = True
-        self.v_rename_table_command = "alter table #p_table_name# rename to #p_new_table_name#"
-        self.v_create_pk_command = "constraint #p_constraint_name# primary key (#p_columns#)"
+        self.v_rename_table_command = (
+            "alter table #p_table_name# rename to #p_new_table_name#"
+        )
+        self.v_create_pk_command = (
+            "constraint #p_constraint_name# primary key (#p_columns#)"
+        )
         self.v_create_fk_command = "constraint #p_constraint_name# foreign key (#p_columns#) references #p_r_table_name# (#p_r_columns#) #p_delete_update_rules#"
-        self.v_create_unique_command = "constraint #p_constraint_name# unique (#p_columns#)"
+        self.v_create_unique_command = (
+            "constraint #p_constraint_name# unique (#p_columns#)"
+        )
         self.v_can_alter_type = True
-        self.v_alter_type_command = "alter table #p_table_name# alter #p_column_name# type #p_new_data_type#"
+        self.v_alter_type_command = (
+            "alter table #p_table_name# alter #p_column_name# type #p_new_data_type#"
+        )
         self.v_can_alter_nullable = True
-        self.v_set_nullable_command = "alter table #p_table_name# alter #p_column_name# drop not null"
-        self.v_drop_nullable_command = "alter table #p_table_name# alter #p_column_name# set not null"
+        self.v_set_nullable_command = (
+            "alter table #p_table_name# alter #p_column_name# drop not null"
+        )
+        self.v_drop_nullable_command = (
+            "alter table #p_table_name# alter #p_column_name# set not null"
+        )
         self.v_can_rename_column = True
-        self.v_rename_column_command = "alter table #p_table_name# rename #p_column_name# to #p_new_column_name#"
+        self.v_rename_column_command = (
+            "alter table #p_table_name# rename #p_column_name# to #p_new_column_name#"
+        )
         self.v_can_add_column = True
         self.v_add_column_command = "alter table #p_table_name# add column #p_column_name# #p_data_type# #p_nullable#"
         self.v_can_drop_column = True
@@ -166,559 +206,569 @@ class PostgreSQL:
         self.v_add_fk_command = "alter table #p_table_name# add constraint #p_constraint_name# foreign key (#p_columns#) references #p_r_table_name# (#p_r_columns#) #p_delete_update_rules#"
         self.v_add_unique_command = "alter table #p_table_name# add constraint #p_constraint_name# unique (#p_columns#)"
         self.v_can_drop_constraint = True
-        self.v_drop_pk_command = "alter table #p_table_name# drop constraint #p_constraint_name#"
-        self.v_drop_fk_command = "alter table #p_table_name# drop constraint #p_constraint_name#"
-        self.v_drop_unique_command = "alter table #p_table_name# drop constraint #p_constraint_name#"
-        self.v_create_index_command = "create index #p_index_name# on #p_table_name# (#p_columns#)";
-        self.v_create_unique_index_command = "create unique index #p_index_name# on #p_table_name# (#p_columns#)"
+        self.v_drop_pk_command = (
+            "alter table #p_table_name# drop constraint #p_constraint_name#"
+        )
+        self.v_drop_fk_command = (
+            "alter table #p_table_name# drop constraint #p_constraint_name#"
+        )
+        self.v_drop_unique_command = (
+            "alter table #p_table_name# drop constraint #p_constraint_name#"
+        )
+        self.v_create_index_command = (
+            "create index #p_index_name# on #p_table_name# (#p_columns#)"
+        )
+        self.v_create_unique_index_command = (
+            "create unique index #p_index_name# on #p_table_name# (#p_columns#)"
+        )
         self.v_drop_index_command = "drop index #p_schema_name#.#p_index_name#"
         self.v_update_rules = [
             "NO ACTION",
-			"RESTRICT",
-			"SET NULL",
-			"SET DEFAULT",
-			"CASCADE"
+            "RESTRICT",
+            "SET NULL",
+            "SET DEFAULT",
+            "CASCADE",
         ]
         self.v_delete_rules = [
             "NO ACTION",
-			"RESTRICT",
-			"SET NULL",
-			"SET DEFAULT",
-			"CASCADE"
+            "RESTRICT",
+            "SET NULL",
+            "SET DEFAULT",
+            "CASCADE",
         ]
         self.v_reserved_words = [
-            'ABORT',
-            'ABS',
-            'ABSOLUTE',
-            'ACCESS',
-            'ACTION',
-            'ADA',
-            'ADD',
-            'ADMIN',
-            'AFTER',
-            'AGGREGATE',
-            'ALIAS',
-            'ALL',
-            'ALLOCATE',
-            'ALTER',
-            'ANALYSE',
-            'ANALYZE',
-            'AND',
-            'ANY',
-            'ARE',
-            'ARRAY',
-            'AS',
-            'ASC',
-            'ASENSITIVE',
-            'ASSERTION',
-            'ASSIGNMENT',
-            'ASYMMETRIC',
-            'AT',
-            'ATOMIC',
-            'AUTHORIZATION',
-            'AVG',
-            'BACKWARD',
-            'BEFORE',
-            'BEGIN',
-            'BETWEEN',
-            'BIGINT',
-            'BINARY',
-            'BIT',
-            'BITVAR',
-            'BIT_LENGTH',
-            'BLOB',
-            'BOOLEAN',
-            'BOTH',
-            'BREADTH',
-            'BY',
-            'C',
-            'CACHE',
-            'CALL',
-            'CALLED',
-            'CARDINALITY',
-            'CASCADE',
-            'CASCADED',
-            'CASE',
-            'CAST',
-            'CATALOG',
-            'CATALOG_NAME',
-            'CHAIN',
-            'CHAR',
-            'CHARACTER',
-            'CHARACTERISTICS',
-            'CHARACTER_LENGTH',
-            'CHARACTER_SET_CATALOG',
-            'CHARACTER_SET_NAME',
-            'CHARACTER_SET_SCHEMA',
-            'CHAR_LENGTH',
-            'CHECK',
-            'CHECKED',
-            'CHECKPOINT',
-            'CLASS',
-            'CLASS_ORIGIN',
-            'CLOB',
-            'CLOSE',
-            'CLUSTER',
-            'COALESCE',
-            'COBOL',
-            'COLLATE',
-            'COLLATION',
-            'COLLATION_CATALOG',
-            'COLLATION_NAME',
-            'COLLATION_SCHEMA',
-            'COLUMN',
-            'COLUMN_NAME',
-            'COMMAND_FUNCTION',
-            'COMMAND_FUNCTION_CODE',
-            'COMMENT',
-            'COMMIT',
-            'COMMITTED',
-            'COMPLETION',
-            'CONDITION_NUMBER',
-            'CONNECT',
-            'CONNECTION',
-            'CONNECTION_NAME',
-            'CONSTRAINT',
-            'CONSTRAINTS',
-            'CONSTRAINT_CATALOG',
-            'CONSTRAINT_NAME',
-            'CONSTRAINT_SCHEMA',
-            'CONSTRUCTOR',
-            'CONTAINS',
-            'CONTINUE',
-            'CONVERSION',
-            'CONVERT',
-            'COPY',
-            'CORRESPONDING',
-            'COUNT',
-            'CREATE',
-            'CREATEDB',
-            'CREATEUSER',
-            'CROSS',
-            'CUBE',
-            'CURRENT',
-            'CURRENT_DATE',
-            'CURRENT_PATH',
-            'CURRENT_ROLE',
-            'CURRENT_TIME',
-            'CURRENT_TIMESTAMP',
-            'CURRENT_USER',
-            'CURSOR',
-            'CURSOR_NAME',
-            'CYCLE',
-            'DATA',
-            'DATABASE',
-            'DATE',
-            'DATETIME_INTERVAL_CODE',
-            'DATETIME_INTERVAL_PRECISION',
-            'DAY',
-            'DEALLOCATE',
-            'DEC',
-            'DECIMAL',
-            'DECLARE',
-            'DEFAULT',
-            'DEFERRABLE',
-            'DEFERRED',
-            'DEFINED',
-            'DEFINER',
-            'DELETE',
-            'DELIMITER',
-            'DELIMITERS',
-            'DEPTH',
-            'DEREF',
-            'DESC',
-            'DESCRIBE',
-            'DESCRIPTOR',
-            'DESTROY',
-            'DESTRUCTOR',
-            'DETERMINISTIC',
-            'DIAGNOSTICS',
-            'DICTIONARY',
-            'DISCONNECT',
-            'DISPATCH',
-            'DISTINCT',
-            'DO',
-            'DOMAIN',
-            'DOUBLE',
-            'DROP',
-            'DYNAMIC',
-            'DYNAMIC_FUNCTION',
-            'DYNAMIC_FUNCTION_CODE',
-            'EACH',
-            'ELSE',
-            'ENCODING',
-            'ENCRYPTED',
-            'END',
-            'END-EXEC',
-            'EQUALS',
-            'ESCAPE',
-            'EVERY',
-            'EXCEPT',
-            'EXCEPTION',
-            'EXCLUSIVE',
-            'EXEC',
-            'EXECUTE',
-            'EXISTING',
-            'EXISTS',
-            'EXPLAIN',
-            'EXTERNAL',
-            'EXTRACT',
-            'FALSE',
-            'FETCH',
-            'FINAL',
-            'FIRST',
-            'FLOAT',
-            'FOR',
-            'FORCE',
-            'FOREIGN',
-            'FORTRAN',
-            'FORWARD',
-            'FOUND',
-            'FREE',
-            'FREEZE',
-            'FROM',
-            'FULL',
-            'FUNCTION',
-            'G',
-            'GENERAL',
-            'GENERATED',
-            'GET',
-            'GLOBAL',
-            'GO',
-            'GOTO',
-            'GRANT',
-            'GRANTED',
-            'GROUP',
-            'GROUPING',
-            'HANDLER',
-            'HAVING',
-            'HIERARCHY',
-            'HOLD',
-            'HOST',
-            'HOUR',
-            'IDENTITY',
-            'IGNORE',
-            'ILIKE',
-            'IMMEDIATE',
-            'IMMUTABLE',
-            'IMPLEMENTATION',
-            'IMPLICIT',
-            'IN',
-            'INCREMENT',
-            'INDEX',
-            'INDICATOR',
-            'INFIX',
-            'INHERITS',
-            'INITIALIZE',
-            'INITIALLY',
-            'INNER',
-            'INOUT',
-            'INPUT',
-            'INSENSITIVE',
-            'INSERT',
-            'INSTANCE',
-            'INSTANTIABLE',
-            'INSTEAD',
-            'INT',
-            'INTEGER',
-            'INTERSECT',
-            'INTERVAL',
-            'INTO',
-            'INVOKER',
-            'IS',
-            'ISNULL',
-            'ISOLATION',
-            'ITERATE',
-            'JOIN',
-            'K',
-            'KEY',
-            'KEY_MEMBER',
-            'KEY_TYPE',
-            'LANCOMPILER',
-            'LANGUAGE',
-            'LARGE',
-            'LAST',
-            'LATERAL',
-            'LEADING',
-            'LEFT',
-            'LENGTH',
-            'LESS',
-            'LEVEL',
-            'LIKE',
-            'LIMIT',
-            'LISTEN',
-            'LOAD',
-            'LOCAL',
-            'LOCALTIME',
-            'LOCALTIMESTAMP',
-            'LOCATION',
-            'LOCATOR',
-            'LOCK',
-            'LOWER',
-            'M',
-            'MAP',
-            'MATCH',
-            'MAX',
-            'MAXVALUE',
-            'MESSAGE_LENGTH',
-            'MESSAGE_OCTET_LENGTH',
-            'MESSAGE_TEXT',
-            'METHOD',
-            'MIN',
-            'MINUTE',
-            'MINVALUE',
-            'MOD',
-            'MODE',
-            'MODIFIES',
-            'MODIFY',
-            'MODULE',
-            'MONTH',
-            'MORE',
-            'MOVE',
-            'MUMPS',
-            'NAME',
-            'NAMES',
-            'NATIONAL',
-            'NATURAL',
-            'NCHAR',
-            'NCLOB',
-            'NEW',
-            'NEXT',
-            'NO',
-            'NOCREATEDB',
-            'NOCREATEUSER',
-            'NONE',
-            'NOT',
-            'NOTHING',
-            'NOTIFY',
-            'NOTNULL',
-            'NULL',
-            'NULLABLE',
-            'NULLIF',
-            'NUMBER',
-            'NUMERIC',
-            'OBJECT',
-            'OCTET_LENGTH',
-            'OF',
-            'OFF',
-            'OFFSET',
-            'OIDS',
-            'OLD',
-            'ON',
-            'ONLY',
-            'OPEN',
-            'OPERATION',
-            'OPERATOR',
-            'OPTION',
-            'OPTIONS',
-            'OR',
-            'ORDER',
-            'ORDINALITY',
-            'OUT',
-            'OUTER',
-            'OUTPUT',
-            'OVERLAPS',
-            'OVERLAY',
-            'OVERRIDING',
-            'OWNER',
-            'PAD',
-            'PARAMETER',
-            'PARAMETERS',
-            'PARAMETER_MODE',
-            'PARAMETER_NAME',
-            'PARAMETER_ORDINAL_POSITION',
-            'PARAMETER_SPECIFIC_CATALOG',
-            'PARAMETER_SPECIFIC_NAME',
-            'PARAMETER_SPECIFIC_SCHEMA',
-            'PARTIAL',
-            'PASCAL',
-            'PASSWORD',
-            'PATH',
-            'PENDANT',
-            'PLACING',
-            'PLI',
-            'POSITION',
-            'POSTFIX',
-            'PRECISION',
-            'PREFIX',
-            'PREORDER',
-            'PREPARE',
-            'PRESERVE',
-            'PRIMARY',
-            'PRIOR',
-            'PRIVILEGES',
-            'PROCEDURAL',
-            'PROCEDURE',
-            'PUBLIC',
-            'READ',
-            'READS',
-            'REAL',
-            'RECHECK',
-            'RECURSIVE',
-            'REF',
-            'REFERENCES',
-            'REFERENCING',
-            'REINDEX',
-            'RELATIVE',
-            'RENAME',
-            'REPEATABLE',
-            'REPLACE',
-            'RESET',
-            'RESTRICT',
-            'RESULT',
-            'RETURN',
-            'RETURNED_LENGTH',
-            'RETURNED_OCTET_LENGTH',
-            'RETURNED_SQLSTATE',
-            'RETURNS',
-            'REVOKE',
-            'RIGHT',
-            'ROLE',
-            'ROLLBACK',
-            'ROLLUP',
-            'ROUTINE',
-            'ROUTINE_CATALOG',
-            'ROUTINE_NAME',
-            'ROUTINE_SCHEMA',
-            'ROW',
-            'ROWS',
-            'ROW_COUNT',
-            'RULE',
-            'SAVEPOINT',
-            'SCALE',
-            'SCHEMA',
-            'SCHEMA_NAME',
-            'SCOPE',
-            'SCROLL',
-            'SEARCH',
-            'SECOND',
-            'SECTION',
-            'SECURITY',
-            'SELECT',
-            'SELF',
-            'SENSITIVE',
-            'SEQUENCE',
-            'SERIALIZABLE',
-            'SERVER_NAME',
-            'SESSION',
-            'SESSION_USER',
-            'SET',
-            'SETOF',
-            'SETS',
-            'SHARE',
-            'SHOW',
-            'SIMILAR',
-            'SIMPLE',
-            'SIZE',
-            'SMALLINT',
-            'SOME',
-            'SOURCE',
-            'SPACE',
-            'SPECIFIC',
-            'SPECIFICTYPE',
-            'SPECIFIC_NAME',
-            'SQL',
-            'SQLCODE',
-            'SQLERROR',
-            'SQLEXCEPTION',
-            'SQLSTATE',
-            'SQLWARNING',
-            'STABLE',
-            'START',
-            'STATE',
-            'STATEMENT',
-            'STATIC',
-            'STATISTICS',
-            'STDIN',
-            'STDOUT',
-            'STORAGE',
-            'STRICT',
-            'STRUCTURE',
-            'STYLE',
-            'SUBCLASS_ORIGIN',
-            'SUBLIST',
-            'SUBSTRING',
-            'SUM',
-            'SYMMETRIC',
-            'SYSID',
-            'SYSTEM',
-            'SYSTEM_USER',
-            'TABLE',
-            'TABLE_NAME',
-            'TEMP',
-            'TEMPLATE',
-            'TEMPORARY',
-            'TERMINATE',
-            'THAN',
-            'THEN',
-            'TIME',
-            'TIMESTAMP',
-            'TIMEZONE_HOUR',
-            'TIMEZONE_MINUTE',
-            'TO',
-            'TOAST',
-            'TRAILING',
-            'TRANSACTION',
-            'TRANSACTIONS_COMMITTED',
-            'TRANSACTIONS_ROLLED_BACK',
-            'TRANSACTION_ACTIVE',
-            'TRANSFORM',
-            'TRANSFORMS',
-            'TRANSLATE',
-            'TRANSLATION',
-            'TREAT',
-            'TRIGGER',
-            'TRIGGER_CATALOG',
-            'TRIGGER_NAME',
-            'TRIGGER_SCHEMA',
-            'TRIM',
-            'TRUE',
-            'TRUNCATE',
-            'TRUSTED',
-            'TYPE',
-            'UNCOMMITTED',
-            'UNDER',
-            'UNENCRYPTED',
-            'UNION',
-            'UNIQUE',
-            'UNKNOWN',
-            'UNLISTEN',
-            'UNNAMED',
-            'UNNEST',
-            'UNTIL',
-            'UPDATE',
-            'UPPER',
-            'USAGE',
-            'USER',
-            'USER_DEFINED_TYPE_CATALOG',
-            'USER_DEFINED_TYPE_NAME',
-            'USER_DEFINED_TYPE_SCHEMA',
-            'USING',
-            'VACUUM',
-            'VALID',
-            'VALIDATOR',
-            'VALUE',
-            'VALUES',
-            'VARCHAR',
-            'VARIABLE',
-            'VARYING',
-            'VERBOSE',
-            'VERSION',
-            'VIEW',
-            'VOLATILE',
-            'WHEN',
-            'WHENEVER',
-            'WHERE',
-            'WITH',
-            'WITHOUT',
-            'WORK',
-            'WRITE',
-            'YEAR',
-            'ZONE',
+            "ABORT",
+            "ABS",
+            "ABSOLUTE",
+            "ACCESS",
+            "ACTION",
+            "ADA",
+            "ADD",
+            "ADMIN",
+            "AFTER",
+            "AGGREGATE",
+            "ALIAS",
+            "ALL",
+            "ALLOCATE",
+            "ALTER",
+            "ANALYSE",
+            "ANALYZE",
+            "AND",
+            "ANY",
+            "ARE",
+            "ARRAY",
+            "AS",
+            "ASC",
+            "ASENSITIVE",
+            "ASSERTION",
+            "ASSIGNMENT",
+            "ASYMMETRIC",
+            "AT",
+            "ATOMIC",
+            "AUTHORIZATION",
+            "AVG",
+            "BACKWARD",
+            "BEFORE",
+            "BEGIN",
+            "BETWEEN",
+            "BIGINT",
+            "BINARY",
+            "BIT",
+            "BITVAR",
+            "BIT_LENGTH",
+            "BLOB",
+            "BOOLEAN",
+            "BOTH",
+            "BREADTH",
+            "BY",
+            "C",
+            "CACHE",
+            "CALL",
+            "CALLED",
+            "CARDINALITY",
+            "CASCADE",
+            "CASCADED",
+            "CASE",
+            "CAST",
+            "CATALOG",
+            "CATALOG_NAME",
+            "CHAIN",
+            "CHAR",
+            "CHARACTER",
+            "CHARACTERISTICS",
+            "CHARACTER_LENGTH",
+            "CHARACTER_SET_CATALOG",
+            "CHARACTER_SET_NAME",
+            "CHARACTER_SET_SCHEMA",
+            "CHAR_LENGTH",
+            "CHECK",
+            "CHECKED",
+            "CHECKPOINT",
+            "CLASS",
+            "CLASS_ORIGIN",
+            "CLOB",
+            "CLOSE",
+            "CLUSTER",
+            "COALESCE",
+            "COBOL",
+            "COLLATE",
+            "COLLATION",
+            "COLLATION_CATALOG",
+            "COLLATION_NAME",
+            "COLLATION_SCHEMA",
+            "COLUMN",
+            "COLUMN_NAME",
+            "COMMAND_FUNCTION",
+            "COMMAND_FUNCTION_CODE",
+            "COMMENT",
+            "COMMIT",
+            "COMMITTED",
+            "COMPLETION",
+            "CONDITION_NUMBER",
+            "CONNECT",
+            "CONNECTION",
+            "CONNECTION_NAME",
+            "CONSTRAINT",
+            "CONSTRAINTS",
+            "CONSTRAINT_CATALOG",
+            "CONSTRAINT_NAME",
+            "CONSTRAINT_SCHEMA",
+            "CONSTRUCTOR",
+            "CONTAINS",
+            "CONTINUE",
+            "CONVERSION",
+            "CONVERT",
+            "COPY",
+            "CORRESPONDING",
+            "COUNT",
+            "CREATE",
+            "CREATEDB",
+            "CREATEUSER",
+            "CROSS",
+            "CUBE",
+            "CURRENT",
+            "CURRENT_DATE",
+            "CURRENT_PATH",
+            "CURRENT_ROLE",
+            "CURRENT_TIME",
+            "CURRENT_TIMESTAMP",
+            "CURRENT_USER",
+            "CURSOR",
+            "CURSOR_NAME",
+            "CYCLE",
+            "DATA",
+            "DATABASE",
+            "DATE",
+            "DATETIME_INTERVAL_CODE",
+            "DATETIME_INTERVAL_PRECISION",
+            "DAY",
+            "DEALLOCATE",
+            "DEC",
+            "DECIMAL",
+            "DECLARE",
+            "DEFAULT",
+            "DEFERRABLE",
+            "DEFERRED",
+            "DEFINED",
+            "DEFINER",
+            "DELETE",
+            "DELIMITER",
+            "DELIMITERS",
+            "DEPTH",
+            "DEREF",
+            "DESC",
+            "DESCRIBE",
+            "DESCRIPTOR",
+            "DESTROY",
+            "DESTRUCTOR",
+            "DETERMINISTIC",
+            "DIAGNOSTICS",
+            "DICTIONARY",
+            "DISCONNECT",
+            "DISPATCH",
+            "DISTINCT",
+            "DO",
+            "DOMAIN",
+            "DOUBLE",
+            "DROP",
+            "DYNAMIC",
+            "DYNAMIC_FUNCTION",
+            "DYNAMIC_FUNCTION_CODE",
+            "EACH",
+            "ELSE",
+            "ENCODING",
+            "ENCRYPTED",
+            "END",
+            "END-EXEC",
+            "EQUALS",
+            "ESCAPE",
+            "EVERY",
+            "EXCEPT",
+            "EXCEPTION",
+            "EXCLUSIVE",
+            "EXEC",
+            "EXECUTE",
+            "EXISTING",
+            "EXISTS",
+            "EXPLAIN",
+            "EXTERNAL",
+            "EXTRACT",
+            "FALSE",
+            "FETCH",
+            "FINAL",
+            "FIRST",
+            "FLOAT",
+            "FOR",
+            "FORCE",
+            "FOREIGN",
+            "FORTRAN",
+            "FORWARD",
+            "FOUND",
+            "FREE",
+            "FREEZE",
+            "FROM",
+            "FULL",
+            "FUNCTION",
+            "G",
+            "GENERAL",
+            "GENERATED",
+            "GET",
+            "GLOBAL",
+            "GO",
+            "GOTO",
+            "GRANT",
+            "GRANTED",
+            "GROUP",
+            "GROUPING",
+            "HANDLER",
+            "HAVING",
+            "HIERARCHY",
+            "HOLD",
+            "HOST",
+            "HOUR",
+            "IDENTITY",
+            "IGNORE",
+            "ILIKE",
+            "IMMEDIATE",
+            "IMMUTABLE",
+            "IMPLEMENTATION",
+            "IMPLICIT",
+            "IN",
+            "INCREMENT",
+            "INDEX",
+            "INDICATOR",
+            "INFIX",
+            "INHERITS",
+            "INITIALIZE",
+            "INITIALLY",
+            "INNER",
+            "INOUT",
+            "INPUT",
+            "INSENSITIVE",
+            "INSERT",
+            "INSTANCE",
+            "INSTANTIABLE",
+            "INSTEAD",
+            "INT",
+            "INTEGER",
+            "INTERSECT",
+            "INTERVAL",
+            "INTO",
+            "INVOKER",
+            "IS",
+            "ISNULL",
+            "ISOLATION",
+            "ITERATE",
+            "JOIN",
+            "K",
+            "KEY",
+            "KEY_MEMBER",
+            "KEY_TYPE",
+            "LANCOMPILER",
+            "LANGUAGE",
+            "LARGE",
+            "LAST",
+            "LATERAL",
+            "LEADING",
+            "LEFT",
+            "LENGTH",
+            "LESS",
+            "LEVEL",
+            "LIKE",
+            "LIMIT",
+            "LISTEN",
+            "LOAD",
+            "LOCAL",
+            "LOCALTIME",
+            "LOCALTIMESTAMP",
+            "LOCATION",
+            "LOCATOR",
+            "LOCK",
+            "LOWER",
+            "M",
+            "MAP",
+            "MATCH",
+            "MAX",
+            "MAXVALUE",
+            "MESSAGE_LENGTH",
+            "MESSAGE_OCTET_LENGTH",
+            "MESSAGE_TEXT",
+            "METHOD",
+            "MIN",
+            "MINUTE",
+            "MINVALUE",
+            "MOD",
+            "MODE",
+            "MODIFIES",
+            "MODIFY",
+            "MODULE",
+            "MONTH",
+            "MORE",
+            "MOVE",
+            "MUMPS",
+            "NAME",
+            "NAMES",
+            "NATIONAL",
+            "NATURAL",
+            "NCHAR",
+            "NCLOB",
+            "NEW",
+            "NEXT",
+            "NO",
+            "NOCREATEDB",
+            "NOCREATEUSER",
+            "NONE",
+            "NOT",
+            "NOTHING",
+            "NOTIFY",
+            "NOTNULL",
+            "NULL",
+            "NULLABLE",
+            "NULLIF",
+            "NUMBER",
+            "NUMERIC",
+            "OBJECT",
+            "OCTET_LENGTH",
+            "OF",
+            "OFF",
+            "OFFSET",
+            "OIDS",
+            "OLD",
+            "ON",
+            "ONLY",
+            "OPEN",
+            "OPERATION",
+            "OPERATOR",
+            "OPTION",
+            "OPTIONS",
+            "OR",
+            "ORDER",
+            "ORDINALITY",
+            "OUT",
+            "OUTER",
+            "OUTPUT",
+            "OVERLAPS",
+            "OVERLAY",
+            "OVERRIDING",
+            "OWNER",
+            "PAD",
+            "PARAMETER",
+            "PARAMETERS",
+            "PARAMETER_MODE",
+            "PARAMETER_NAME",
+            "PARAMETER_ORDINAL_POSITION",
+            "PARAMETER_SPECIFIC_CATALOG",
+            "PARAMETER_SPECIFIC_NAME",
+            "PARAMETER_SPECIFIC_SCHEMA",
+            "PARTIAL",
+            "PASCAL",
+            "PASSWORD",
+            "PATH",
+            "PENDANT",
+            "PLACING",
+            "PLI",
+            "POSITION",
+            "POSTFIX",
+            "PRECISION",
+            "PREFIX",
+            "PREORDER",
+            "PREPARE",
+            "PRESERVE",
+            "PRIMARY",
+            "PRIOR",
+            "PRIVILEGES",
+            "PROCEDURAL",
+            "PROCEDURE",
+            "PUBLIC",
+            "READ",
+            "READS",
+            "REAL",
+            "RECHECK",
+            "RECURSIVE",
+            "REF",
+            "REFERENCES",
+            "REFERENCING",
+            "REINDEX",
+            "RELATIVE",
+            "RENAME",
+            "REPEATABLE",
+            "REPLACE",
+            "RESET",
+            "RESTRICT",
+            "RESULT",
+            "RETURN",
+            "RETURNED_LENGTH",
+            "RETURNED_OCTET_LENGTH",
+            "RETURNED_SQLSTATE",
+            "RETURNS",
+            "REVOKE",
+            "RIGHT",
+            "ROLE",
+            "ROLLBACK",
+            "ROLLUP",
+            "ROUTINE",
+            "ROUTINE_CATALOG",
+            "ROUTINE_NAME",
+            "ROUTINE_SCHEMA",
+            "ROW",
+            "ROWS",
+            "ROW_COUNT",
+            "RULE",
+            "SAVEPOINT",
+            "SCALE",
+            "SCHEMA",
+            "SCHEMA_NAME",
+            "SCOPE",
+            "SCROLL",
+            "SEARCH",
+            "SECOND",
+            "SECTION",
+            "SECURITY",
+            "SELECT",
+            "SELF",
+            "SENSITIVE",
+            "SEQUENCE",
+            "SERIALIZABLE",
+            "SERVER_NAME",
+            "SESSION",
+            "SESSION_USER",
+            "SET",
+            "SETOF",
+            "SETS",
+            "SHARE",
+            "SHOW",
+            "SIMILAR",
+            "SIMPLE",
+            "SIZE",
+            "SMALLINT",
+            "SOME",
+            "SOURCE",
+            "SPACE",
+            "SPECIFIC",
+            "SPECIFICTYPE",
+            "SPECIFIC_NAME",
+            "SQL",
+            "SQLCODE",
+            "SQLERROR",
+            "SQLEXCEPTION",
+            "SQLSTATE",
+            "SQLWARNING",
+            "STABLE",
+            "START",
+            "STATE",
+            "STATEMENT",
+            "STATIC",
+            "STATISTICS",
+            "STDIN",
+            "STDOUT",
+            "STORAGE",
+            "STRICT",
+            "STRUCTURE",
+            "STYLE",
+            "SUBCLASS_ORIGIN",
+            "SUBLIST",
+            "SUBSTRING",
+            "SUM",
+            "SYMMETRIC",
+            "SYSID",
+            "SYSTEM",
+            "SYSTEM_USER",
+            "TABLE",
+            "TABLE_NAME",
+            "TEMP",
+            "TEMPLATE",
+            "TEMPORARY",
+            "TERMINATE",
+            "THAN",
+            "THEN",
+            "TIME",
+            "TIMESTAMP",
+            "TIMEZONE_HOUR",
+            "TIMEZONE_MINUTE",
+            "TO",
+            "TOAST",
+            "TRAILING",
+            "TRANSACTION",
+            "TRANSACTIONS_COMMITTED",
+            "TRANSACTIONS_ROLLED_BACK",
+            "TRANSACTION_ACTIVE",
+            "TRANSFORM",
+            "TRANSFORMS",
+            "TRANSLATE",
+            "TRANSLATION",
+            "TREAT",
+            "TRIGGER",
+            "TRIGGER_CATALOG",
+            "TRIGGER_NAME",
+            "TRIGGER_SCHEMA",
+            "TRIM",
+            "TRUE",
+            "TRUNCATE",
+            "TRUSTED",
+            "TYPE",
+            "UNCOMMITTED",
+            "UNDER",
+            "UNENCRYPTED",
+            "UNION",
+            "UNIQUE",
+            "UNKNOWN",
+            "UNLISTEN",
+            "UNNAMED",
+            "UNNEST",
+            "UNTIL",
+            "UPDATE",
+            "UPPER",
+            "USAGE",
+            "USER",
+            "USER_DEFINED_TYPE_CATALOG",
+            "USER_DEFINED_TYPE_NAME",
+            "USER_DEFINED_TYPE_SCHEMA",
+            "USING",
+            "VACUUM",
+            "VALID",
+            "VALIDATOR",
+            "VALUE",
+            "VALUES",
+            "VARCHAR",
+            "VARIABLE",
+            "VARYING",
+            "VERBOSE",
+            "VERSION",
+            "VIEW",
+            "VOLATILE",
+            "WHEN",
+            "WHENEVER",
+            "WHERE",
+            "WITH",
+            "WITHOUT",
+            "WORK",
+            "WRITE",
+            "YEAR",
+            "ZONE",
         ]
         self.v_console_help = "Console tab. Type the commands in the editor below this box. \? to view command list."
-        self.v_version = ''
-        self.v_version_num = ''
+        self.v_version = ""
+        self.v_version_num = ""
         self.v_use_server_cursor = True
 
     # Decorator to acquire lock before performing action
@@ -744,6 +794,7 @@ class PostgreSQL:
             except:
                 None
             return r
+
         wrap.__doc__ = function.__doc__
         wrap.__name__ = function.__name__
         return wrap
@@ -753,53 +804,55 @@ class PostgreSQL:
 
     @lock_required
     def GetVersion(self):
-        self.v_version = self.v_connection.ExecuteScalar('show server_version')
-        self.v_version_num = self.v_connection.ExecuteScalar('show server_version_num')
-        return 'PostgreSQL ' + self.v_version.split(' ')[0]
+        self.v_version = self.v_connection.ExecuteScalar("show server_version")
+        self.v_version_num = self.v_connection.ExecuteScalar("show server_version_num")
+        return "PostgreSQL " + self.v_version.split(" ")[0]
 
     @lock_required
     def GetUserSuper(self):
-        return self.v_connection.ExecuteScalar("select rolsuper from pg_roles where rolname = '{0}'".format(self.v_user))
+        return self.v_connection.ExecuteScalar(
+            "select rolsuper from pg_roles where rolname = '{0}'".format(self.v_user)
+        )
 
     def PrintDatabaseInfo(self):
-        if self.v_conn_string=='':
-            return self.v_active_user + '@' + self.v_active_service
+        if self.v_conn_string == "":
+            return self.v_active_user + "@" + self.v_active_service
         else:
-            return self.v_active_user + '@' + self.v_active_service
+            return self.v_active_user + "@" + self.v_active_service
 
     def PrintDatabaseDetails(self):
-        return self.v_active_server + ':' + self.v_active_port
+        return self.v_active_server + ":" + self.v_active_port
 
     def HandleUpdateDeleteRules(self, p_update_rule, p_delete_rule):
-        v_rules = ''
-        if p_update_rule.strip() != '':
-            v_rules += ' on update ' + p_update_rule + ' '
-        if p_delete_rule.strip() != '':
-            v_rules += ' on delete ' + p_delete_rule + ' '
+        v_rules = ""
+        if p_update_rule.strip() != "":
+            v_rules += " on update " + p_update_rule + " "
+        if p_delete_rule.strip() != "":
+            v_rules += " on delete " + p_delete_rule + " "
         return v_rules
 
     @lock_required
     def TestConnection(self):
-        v_return = ''
-        if self.v_conn_string and self.v_conn_string_error!='':
+        v_return = ""
+        if self.v_conn_string and self.v_conn_string_error != "":
             return self.v_conn_string_error
         try:
             self.v_connection.Open()
             v_schema = self.QuerySchemas()
             if len(v_schema.Rows) > 0:
-                v_return = 'Connection successful.'
+                v_return = "Connection successful."
             self.v_connection.Close()
         except Exception as exc:
             v_return = str(exc)
         return v_return
 
     def GetErrorPosition(self, p_error_message):
-        vector = str(p_error_message).split('\n')
+        vector = str(p_error_message).split("\n")
         v_return = None
-        if len(vector) > 1 and vector[1][0:4]=='LINE':
+        if len(vector) > 1 and vector[1][0:4] == "LINE":
             v_return = {
-                'row': vector[1].split(':')[0].split(' ')[1],
-                'col': vector[2].index('^') - len(vector[1].split(':')[0])-2
+                "row": vector[1].split(":")[0].split(" ")[1],
+                "col": vector[2].index("^") - len(vector[1].split(":")[0]) - 2,
             }
         return v_return
 
@@ -821,25 +874,32 @@ class PostgreSQL:
 
     @lock_required
     def QueryRoles(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(rolname) as role_name,
                    oid
             from pg_roles
             order by rolname
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryTablespaces(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(spcname) as tablespace_name,
                    oid
             from pg_tablespace
             order by spcname
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryDatabases(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select database_name,
                    oid
             from (
@@ -862,20 +922,26 @@ class PostgreSQL:
             ) x
             ) y
             order by sort
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryExtensions(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(extname) as extension_name,
                    oid
             from pg_extension
             order by extname
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QuerySchemas(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select schema_name,
                    oid
             from (
@@ -903,19 +969,24 @@ class PostgreSQL:
             ) x
             ) y
             order by sort
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryTables(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             with parents as (
                 select distinct quote_ident(c.relname) as table_name,
                        quote_ident(n.nspname) as table_schema
@@ -954,26 +1025,37 @@ class PostgreSQL:
               and c.relkind in ('r', 'p')
             {0}
             order by 2, 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesFields(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(c.relname) as table_name,
                    quote_ident(a.attname) as column_name,
                    (case when t.typtype = 'd'::"char"
@@ -1040,26 +1122,39 @@ class PostgreSQL:
               {0}
             order by quote_ident(c.relname),
                      a.attnum
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesForeignKeys(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "AND c.connamespace = '{0}'::regnamespace AND quote_ident(t.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "AND c.connamespace = '{0}'::regnamespace AND quote_ident(t.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "AND c.connamespace = '{0}'::regnamespace AND quote_ident(t.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "AND c.connamespace = '{0}'::regnamespace AND quote_ident(t.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "AND c.connamespace = '{0}'::regnamespace ".format(p_schema)
             else:
-                v_filter = "AND c.connamespace = '{0}'::regnamespace ".format(self.v_schema)
+                v_filter = "AND c.connamespace = '{0}'::regnamespace ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "AND c.connamespace NOT IN ('information_schema'::regnamespace, 'pg_catalog'::regnamespace) AND quote_ident(t.relname) = {0}".format(p_table)
+                v_filter = "AND c.connamespace NOT IN ('information_schema'::regnamespace, 'pg_catalog'::regnamespace) AND quote_ident(t.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "AND c.connamespace NOT IN ('information_schema'::regnamespace, 'pg_catalog'::regnamespace) "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             SELECT DISTINCT quote_ident(c.conname) AS constraint_name,
                             quote_ident(t.relname) AS table_name,
                             quote_ident(rc.conname) AS r_constraint_name,
@@ -1144,27 +1239,46 @@ class PostgreSQL:
             {0}
             ORDER BY quote_ident(c.conname),
                      quote_ident(t.relname)
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
-    def QueryTablesForeignKeysColumns(self, p_fkey, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryTablesForeignKeysColumns(
+        self, p_fkey, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' and quote_ident(kcu1.table_name) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' and quote_ident(kcu1.table_name) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' and quote_ident(kcu1.table_name) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' and quote_ident(kcu1.table_name) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
-                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' ".format(p_schema)
+                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' ".format(
+                    p_schema
+                )
             else:
-                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' ".format(self.v_schema)
+                v_filter = "and quote_ident(rc.constraint_schema) = '{0}' ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "and quote_ident(rc.constraint_schema) not in ('information_schema','pg_catalog') and quote_ident(kcu1.table_name) = {0}".format(p_table)
+                v_filter = "and quote_ident(rc.constraint_schema) not in ('information_schema','pg_catalog') and quote_ident(kcu1.table_name) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(rc.constraint_schema) not in ('information_schema','pg_catalog') "
-        v_filter = v_filter + "and quote_ident(kcu1.constraint_name) = '{0}' ".format(p_fkey)
-        return self.v_connection.Query('''
+        v_filter = v_filter + "and quote_ident(kcu1.constraint_name) = '{0}' ".format(
+            p_fkey
+        )
+        return self.v_connection.Query(
+            """
             select *
             from (select distinct
                          quote_ident(kcu1.constraint_name) as constraint_name,
@@ -1192,26 +1306,41 @@ class PostgreSQL:
             {0}
             ) t
             order by ordinal_position
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesPrimaryKeys(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(p_schema)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(
+                    p_schema
+                )
             else:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(self.v_schema)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') AND quote_ident(t.relname) = {0}".format(p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') AND quote_ident(t.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             SELECT quote_ident(c.conname) AS constraint_name,
                    quote_ident(t.relname) AS table_name,
                    quote_ident(t.relnamespace::regnamespace::text) AS table_schema,
@@ -1229,27 +1358,44 @@ class PostgreSQL:
               {0}
             ORDER BY quote_ident(c.conname),
                      quote_ident(t.relnamespace::regnamespace::text)
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
-    def QueryTablesPrimaryKeysColumns(self, p_pkey, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryTablesPrimaryKeysColumns(
+        self, p_pkey, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(p_schema)
             else:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(self.v_schema)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') and quote_ident(tc.table_name) = {0}".format(p_table)
+                v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') and quote_ident(tc.table_name) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') "
-        v_filter = v_filter + "and quote_ident(tc.constraint_name) = '{0}' ".format(p_pkey)
-        return self.v_connection.Query('''
+        v_filter = v_filter + "and quote_ident(tc.constraint_name) = '{0}' ".format(
+            p_pkey
+        )
+        return self.v_connection.Query(
+            """
             select quote_ident(kc.column_name) as column_name
             from information_schema.table_constraints tc
             join information_schema.key_column_usage kc
@@ -1259,26 +1405,41 @@ class PostgreSQL:
             where tc.constraint_type = 'PRIMARY KEY'
             {0}
             order by kc.ordinal_position
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesUniques(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' AND quote_ident(t.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(p_schema)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(
+                    p_schema
+                )
             else:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(self.v_schema)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) = '{0}' ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') AND quote_ident(t.relname) = {0}".format(p_table)
+                v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') AND quote_ident(t.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "AND quote_ident(t.relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             SELECT quote_ident(c.conname) AS constraint_name,
                    quote_ident(t.relname) AS table_name,
                    quote_ident(t.relnamespace::regnamespace::text) AS table_schema,
@@ -1296,27 +1457,44 @@ class PostgreSQL:
               {0}
             ORDER BY quote_ident(c.conname),
                      quote_ident(t.relnamespace::regnamespace::text)
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
-    def QueryTablesUniquesColumns(self, p_unique, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryTablesUniquesColumns(
+        self, p_unique, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' and quote_ident(tc.table_name) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(p_schema)
             else:
-                v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(self.v_schema)
+                v_filter = "and quote_ident(tc.table_schema) = '{0}' ".format(
+                    self.v_schema
+                )
         else:
             if p_table:
-                v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') and quote_ident(tc.table_name) = {0}".format(p_table)
+                v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') and quote_ident(tc.table_name) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(tc.table_schema) not in ('information_schema','pg_catalog') "
-        v_filter = v_filter + "and quote_ident(tc.constraint_name) = '{0}' ".format(p_unique)
-        return self.v_connection.Query('''
+        v_filter = v_filter + "and quote_ident(tc.constraint_name) = '{0}' ".format(
+            p_unique
+        )
+        return self.v_connection.Query(
+            """
             select quote_ident(kc.column_name) as column_name
             from information_schema.table_constraints tc
             join information_schema.key_column_usage kc
@@ -1326,29 +1504,42 @@ class PostgreSQL:
             where tc.constraint_type = 'UNIQUE'
             {0}
             order by kc.ordinal_position
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesIndexes(self, p_table=None, p_all_schemas=False, p_schema=None):
         return self.QueryTablesIndexesHelper(p_table, p_all_schemas, p_schema)
 
-    def QueryTablesIndexesHelper(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryTablesIndexesHelper(
+        self, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(c.relname) as table_name,
                    quote_ident(ci.relname) as index_name,
                    (case when i.indisunique then 'Unique' else 'Non Unique' end) as uniqueness,
@@ -1371,27 +1562,40 @@ class PostgreSQL:
               and i.indislive
               {0}
             order by 1, 2
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
-    def QueryTablesIndexesColumns(self, p_index, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryTablesIndexesColumns(
+        self, p_index, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
         v_filter = v_filter + "and quote_ident(ci.relname) = '{0}' ".format(p_index)
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select unnest(string_to_array(replace(substr(t.indexdef, strpos(t.indexdef, '(')+1, strpos(t.indexdef, ')')-strpos(t.indexdef, '(')-1), ' ', ''),',')) as column_name
             from (
             select pg_get_indexdef(i.indexrelid) as indexdef
@@ -1408,26 +1612,37 @@ class PostgreSQL:
               and i.indislive
               {0}
             ) t
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesChecks(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(t.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(t.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) as schema_name,
                    quote_ident(t.relname) as table_name,
                    quote_ident(c.conname) as constraint_name,
@@ -1441,26 +1656,37 @@ class PostgreSQL:
             where contype = 'c'
             {0}
             order by 1, 2, 3
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesExcludes(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(t.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(t.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(t.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_exclude_ops(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -1532,26 +1758,37 @@ class PostgreSQL:
             where contype = 'x'
             {0}
             order by 1, 2, 3
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesRules(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(schemaname) = '{0}' and quote_ident(tablename) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(schemaname) = '{0}' and quote_ident(tablename) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(schemaname) = '{0}' and quote_ident(tablename) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(schemaname) = '{0}' and quote_ident(tablename) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(schemaname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(schemaname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(schemaname) not in ('information_schema','pg_catalog') and quote_ident(tablename) = {0}".format(p_table)
+                v_filter = "and quote_ident(schemaname) not in ('information_schema','pg_catalog') and quote_ident(tablename) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(schemaname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(r.schemaname) as table_schema,
                    quote_ident(r.tablename) as table_name,
                    quote_ident(r.rulename) as rule_name,
@@ -1562,11 +1799,16 @@ class PostgreSQL:
             where 1 = 1
             {0}
             order by 1, 2, 3
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def GetRuleDefinition(self, p_rule, p_table, p_schema):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select r.definition ||
                    (CASE WHEN obj_description(rw.oid, 'pg_rewrite') IS NOT NULL
                          THEN format(
@@ -1583,11 +1825,15 @@ class PostgreSQL:
             where quote_ident(r.schemaname) = '{0}'
               and quote_ident(r.tablename) = '{1}'
               and quote_ident(r.rulename) = '{2}'
-        '''.format(p_schema, p_table, p_rule)).replace('CREATE RULE', 'CREATE OR REPLACE RULE')
+        """.format(
+                p_schema, p_table, p_rule
+            )
+        ).replace("CREATE RULE", "CREATE OR REPLACE RULE")
 
     @lock_required
     def QueryEventTriggers(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(t.evtname) as trigger_name,
                    t.evtenabled as trigger_enabled,
                    t.evtevent as event_name,
@@ -1600,26 +1846,34 @@ class PostgreSQL:
             on p.oid = t.evtfoid
             inner join pg_namespace np
             on np.oid = p.pronamespace
-        ''')
+        """
+        )
 
     @lock_required
     def QueryTablesTriggers(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) as schema_name,
                    quote_ident(c.relname) as table_name,
                    quote_ident(t.tgname) as trigger_name,
@@ -1640,27 +1894,38 @@ class PostgreSQL:
             where not t.tgisinternal
             {0}
             order by 1, 2, 3
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTablesInheriteds(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(np.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(np.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') and quote_ident(cp.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') and quote_ident(cp.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') "
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000:
+            return self.v_connection.Query(
+                """
                 select quote_ident(np.nspname) as parent_schema,
                        quote_ident(cp.relname) as parent_table,
                        quote_ident(nc.nspname) as child_schema,
@@ -1673,9 +1938,13 @@ class PostgreSQL:
                 where not cc.relispartition
                 {0}
                 order by 1, 2, 3, 4
-            '''.format(v_filter))
+            """.format(
+                    v_filter
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select quote_ident(np.nspname) as parent_schema,
                        quote_ident(cp.relname) as parent_table,
                        quote_ident(nc.nspname) as child_schema,
@@ -1688,19 +1957,25 @@ class PostgreSQL:
                 where 1 = 1
                 {0}
                 order by 1, 2, 3, 4
-            '''.format(v_filter))
+            """.format(
+                    v_filter
+                )
+            )
 
     @lock_required
     def QueryTablesInheritedsParents(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select distinct quote_ident(cp.relname) as table_name,
                    quote_ident(np.nspname) as table_schema
             from pg_inherits i
@@ -1711,12 +1986,16 @@ class PostgreSQL:
             where cp.relkind = 'r'
             {0}
             order by 2, 1
-        '''.format(v_filter))
+        """.format(
+                v_filter
+            )
+        )
 
     @lock_required
     def QueryTablesInheritedsChildren(self, p_table, p_schema):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000:
+            return self.v_connection.Query(
+                """
                 select quote_ident(cc.relname) as table_name,
                        quote_ident(nc.nspname) as table_schema,
                        cc.oid
@@ -1729,9 +2008,13 @@ class PostgreSQL:
                   and quote_ident(np.nspname) || '.' || quote_ident(cp.relname) = '{0}'
                   and quote_ident(nc.nspname) = '{1}'
                 order by 2, 1
-            '''.format(p_table, p_schema))
+            """.format(
+                    p_table, p_schema
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select quote_ident(cc.relname) as table_name,
                        quote_ident(nc.nspname) as table_schema,
                        cc.oid
@@ -1743,26 +2026,36 @@ class PostgreSQL:
                 where quote_ident(np.nspname) || '.' || quote_ident(cp.relname) = '{0}'
                   and quote_ident(nc.nspname) = '{1}'
                 order by 2, 1
-            '''.format(p_table, p_schema))
+            """.format(
+                    p_table, p_schema
+                )
+            )
 
     @lock_required
     def QueryTablesPartitions(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(np.nspname) = '{0}' and quote_ident(cp.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(np.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(np.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') and quote_ident(cp.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') and quote_ident(cp.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(np.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(np.nspname) as parent_schema,
                    quote_ident(cp.relname) as parent_table,
                    quote_ident(nc.nspname) as child_schema,
@@ -1775,19 +2068,25 @@ class PostgreSQL:
             where cc.relispartition
             {0}
             order by 1, 2, 3, 4
-        '''.format(v_filter))
+        """.format(
+                v_filter
+            )
+        )
 
     @lock_required
     def QueryTablesPartitionsParents(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select distinct quote_ident(cp.relname) as table_name,
                    quote_ident(np.nspname) as table_schema
             from pg_inherits i
@@ -1798,11 +2097,15 @@ class PostgreSQL:
             where cp.relkind = 'p'
             {0}
             order by 2, 1
-        '''.format(v_filter))
+        """.format(
+                v_filter
+            )
+        )
 
     @lock_required
     def QueryTablesPartitionsChildren(self, p_table, p_schema):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(cc.relname) as table_name,
                    quote_ident(nc.nspname) as table_schema,
                    cc.oid
@@ -1815,29 +2118,38 @@ class PostgreSQL:
               and quote_ident(np.nspname) || '.' || quote_ident(cp.relname) = '{0}'
               and quote_ident(nc.nspname) = '{1}'
             order by 2, 1
-        '''.format(p_table, p_schema))
+        """.format(
+                p_table, p_schema
+            )
+        )
 
     @lock_required
     def QueryTablesStatistics(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
 
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "AND quote_ident(n.nspname) = '{0}' AND quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "AND quote_ident(n.nspname) = '{0}' AND quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "AND quote_ident(n.nspname) = '{0}' AND quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "AND quote_ident(n.nspname) = '{0}' AND quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "AND quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "AND quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "AND quote_ident(n.nspname) NOT IN ('information_schema','pg_catalog') AND quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "AND quote_ident(n.nspname) NOT IN ('information_schema','pg_catalog') AND quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "AND quote_ident(n.nspname) NOT IN ('information_schema','pg_catalog') "
 
         return self.v_connection.Query(
-            '''
+            """
                 select quote_ident(c.relname) AS table_name,
                        quote_ident(se.stxname) AS statistic_name,
                        quote_ident(n2.nspname) AS schema_name,
@@ -1854,33 +2166,41 @@ class PostgreSQL:
                 ORDER BY 1,
                          3,
                          2
-            '''.format(
+            """.format(
                 v_filter
             ),
-            True
+            True,
         )
 
     @lock_required
-    def QueryStatisticsFields(self, p_statistics=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryStatisticsFields(
+        self, p_statistics=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
 
         if not p_all_schemas:
             if p_statistics and p_schema:
-                v_filter = "AND quote_ident(n2.nspname) = '{0}' AND quote_ident(se.stxname) = '{1}' ".format(p_schema, p_statistics)
+                v_filter = "AND quote_ident(n2.nspname) = '{0}' AND quote_ident(se.stxname) = '{1}' ".format(
+                    p_schema, p_statistics
+                )
             elif p_statistics:
-                v_filter = "AND quote_ident(n2.nspname) = '{0}' AND quote_ident(se.stxname) = '{1}' ".format(self.v_schema, p_statistics)
+                v_filter = "AND quote_ident(n2.nspname) = '{0}' AND quote_ident(se.stxname) = '{1}' ".format(
+                    self.v_schema, p_statistics
+                )
             elif p_schema:
                 v_filter = "AND quote_ident(n2.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "AND quote_ident(n2.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_statistics:
-                v_filter = "AND quote_ident(n2.nspname) NOT IN ('information_schema','pg_catalog') AND quote_ident(se.stxname) = {0}".format(p_statistics)
+                v_filter = "AND quote_ident(n2.nspname) NOT IN ('information_schema','pg_catalog') AND quote_ident(se.stxname) = {0}".format(
+                    p_statistics
+                )
             else:
                 v_filter = "AND quote_ident(n2.nspname) NOT IN ('information_schema','pg_catalog') "
 
         return self.v_connection.Query(
-            '''
+            """
                 select quote_ident(n2.nspname) AS schema_name,
                        quote_ident(se.stxname) AS statistic_name,
                        quote_ident(a.attname) AS column_name
@@ -1899,10 +2219,10 @@ class PostgreSQL:
                 ORDER BY 1,
                          2,
                          3
-            '''.format(
+            """.format(
                 v_filter
             ),
-            True
+            True,
         )
 
     @lock_required
@@ -1910,10 +2230,12 @@ class PostgreSQL:
         if p_count != -1:
             try:
                 self.v_connection.Open()
-                v_data = self.v_connection.QueryBlock(p_query + ' limit {0}'.format(p_count), p_count, True)
+                v_data = self.v_connection.QueryBlock(
+                    p_query + " limit {0}".format(p_count), p_count, True
+                )
                 self.v_connection.Close()
                 return v_data
-            except Spartacus.Database.Exception as exc:
+            except Spartacus.Database.DBException as exc:
                 try:
                     self.v_connection.Cancel()
                 except:
@@ -1924,34 +2246,36 @@ class PostgreSQL:
 
     @lock_required
     def QueryTableRecords(self, p_column_list, p_table, p_filter, p_count=-1):
-        v_limit = ''
+        v_limit = ""
         if p_count != -1:
-            v_limit = ' limit ' + p_count
-        return self.v_connection.Query('''
+            v_limit = " limit " + p_count
+        return self.v_connection.Query(
+            """
             select {0}
             from {1} t
             {2}
             {3}
-        '''.format(
-                p_column_list,
-                p_table,
-                p_filter,
-                v_limit
-            ), False
+        """.format(
+                p_column_list, p_table, p_filter, v_limit
+            ),
+            False,
         )
 
     @lock_required
     def QueryFunctions(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return self.v_connection.Query(
+                """
                 select quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' as id,
                        quote_ident(p.proname) as name,
                        quote_ident(n.nspname) as schema_name,
@@ -1963,9 +2287,14 @@ class PostgreSQL:
                   and format_type(p.prorettype, null) not in ('trigger', 'event_trigger')
                 {0}
                 order by 1
-            '''.format(v_filter), True)
+            """.format(
+                    v_filter
+                ),
+                True,
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' as id,
                        quote_ident(p.proname) as name,
                        quote_ident(n.nspname) as schema_name,
@@ -1977,12 +2306,17 @@ class PostgreSQL:
                   and format_type(p.prorettype, null) not in ('trigger', 'event_trigger')
                 {0}
                 order by 1
-            '''.format(v_filter), True)
+            """.format(
+                    v_filter
+                ),
+                True,
+            )
 
     @lock_required
     def QueryFunctionFields(self, p_function, p_schema):
         if p_schema:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select y.type::character varying as type,
                        quote_ident(y.name) as name,
                        1 as seq
@@ -2008,9 +2342,14 @@ class PostgreSQL:
                 ) x
                 where length(trim(x.name)) > 0
                 order by 3
-            '''.format(p_schema, p_function), True)
+            """.format(
+                    p_schema, p_function
+                ),
+                True,
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select y.type::character varying as type,
                        quote_ident(y.name) as name,
                        1 as seq
@@ -2036,33 +2375,46 @@ class PostgreSQL:
                 ) x
                 where length(trim(x.name)) > 0
                 order by 3
-            '''.format(self.v_schema, p_function), True)
+            """.format(
+                    self.v_schema, p_function
+                ),
+                True,
+            )
 
     @lock_required
     def GetFunctionDefinition(self, p_function):
-        return self.v_connection.ExecuteScalar("select pg_get_functiondef('{0}'::regprocedure)".format(p_function))
+        return self.v_connection.ExecuteScalar(
+            "select pg_get_functiondef('{0}'::regprocedure)".format(p_function)
+        )
 
     @lock_required
     def GetFunctionDebug(self, p_function):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select p.prosrc
             from pg_proc p
             join pg_namespace n
             on p.pronamespace = n.oid
             where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
-        '''.format(p_function))
+        """.format(
+                p_function
+            )
+        )
 
     @lock_required
     def QueryProcedures(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' as id,
                    quote_ident(p.proname) as name,
                    quote_ident(n.nspname) as schema_name,
@@ -2073,12 +2425,17 @@ class PostgreSQL:
             where p.prokind = 'p'
             {0}
             order by 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryProcedureFields(self, p_procedure, p_schema):
         if p_schema:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select (case trim(substring((trim(x.name) || ' ') from 1 for position(' ' in (trim(x.name) || ' '))))
                           when 'OUT' then 'O'
                           when 'INOUT' then 'X'
@@ -2091,9 +2448,14 @@ class PostgreSQL:
                 ) x
                 where length(trim(x.name)) > 0
                 order by 3
-            '''.format(p_schema, p_procedure), True)
+            """.format(
+                    p_schema, p_procedure
+                ),
+                True,
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select (case trim(substring((trim(x.name) || ' ') from 1 for position(' ' in (trim(x.name) || ' '))))
                           when 'OUT' then 'O'
                           when 'INOUT' then 'X'
@@ -2106,33 +2468,46 @@ class PostgreSQL:
                 ) x
                 where length(trim(x.name)) > 0
                 order by 3
-            '''.format(self.v_schema, p_procedure), True)
+            """.format(
+                    self.v_schema, p_procedure
+                ),
+                True,
+            )
 
     @lock_required
     def GetProcedureDefinition(self, p_procedure):
-        return self.v_connection.ExecuteScalar("select pg_get_functiondef('{0}'::regprocedure)".format(p_procedure))
+        return self.v_connection.ExecuteScalar(
+            "select pg_get_functiondef('{0}'::regprocedure)".format(p_procedure)
+        )
 
     @lock_required
     def GetProcedureDebug(self, p_procedure):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select p.prosrc
             from pg_proc p
             join pg_namespace n
             on p.pronamespace = n.oid
             where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
-        '''.format(p_procedure))
+        """.format(
+                p_procedure
+            )
+        )
 
     @lock_required
     def QueryTriggerFunctions(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' as id,
                    quote_ident(p.proname) as name,
                    quote_ident(n.nspname) as schema_name,
@@ -2143,23 +2518,32 @@ class PostgreSQL:
             where format_type(p.prorettype, null) = 'trigger'
             {0}
             order by 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def GetTriggerFunctionDefinition(self, p_function):
-        return self.v_connection.ExecuteScalar("select pg_get_functiondef('{0}'::regprocedure)".format(p_function))
+        return self.v_connection.ExecuteScalar(
+            "select pg_get_functiondef('{0}'::regprocedure)".format(p_function)
+        )
 
     @lock_required
     def QueryEventTriggerFunctions(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' as id,
                    quote_ident(p.proname) as name,
                    quote_ident(n.nspname) as schema_name,
@@ -2170,11 +2554,15 @@ class PostgreSQL:
             where format_type(p.prorettype, null) = 'event_trigger'
             {0}
             order by 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryAggregates(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
 
         if not p_all_schemas:
             if p_schema:
@@ -2182,11 +2570,13 @@ class PostgreSQL:
             else:
                 v_filter = "AND quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "AND quote_ident(n.nspname) NOT IN ('information_schema','pg_catalog') "
+            v_filter = (
+                "AND quote_ident(n.nspname) NOT IN ('information_schema','pg_catalog') "
+            )
 
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS id,
                            quote_ident(p.proname) AS name,
                            quote_ident(n.nspname) AS schema_name,
@@ -2199,14 +2589,14 @@ class PostgreSQL:
                     WHERE p.proisagg
                       {0}
                     ORDER BY 1
-                '''.format(
+                """.format(
                     v_filter
                 ),
-                True
+                True,
             )
         else:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS id,
                            quote_ident(p.proname) AS name,
                            quote_ident(n.nspname) AS schema_name,
@@ -2219,27 +2609,38 @@ class PostgreSQL:
                     WHERE p.prokind = 'a'
                       {0}
                     ORDER BY 1
-                '''.format(
+                """.format(
                     v_filter
                 ),
-                True
+                True,
             )
 
     @lock_required
     def GetEventTriggerFunctionDefinition(self, p_function):
-        return self.v_connection.ExecuteScalar("select pg_get_functiondef('{0}'::regprocedure)".format(p_function))
+        return self.v_connection.ExecuteScalar(
+            "select pg_get_functiondef('{0}'::regprocedure)".format(p_function)
+        )
 
     @lock_required
     def QuerySequences(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
-                v_filter = "and quote_ident(relnamespace::regnamespace::text) = '{0}' ".format(p_schema)
+                v_filter = (
+                    "and quote_ident(relnamespace::regnamespace::text) = '{0}' ".format(
+                        p_schema
+                    )
+                )
             else:
-                v_filter = "and quote_ident(relnamespace::regnamespace::text) = '{0}' ".format(self.v_schema)
+                v_filter = (
+                    "and quote_ident(relnamespace::regnamespace::text) = '{0}' ".format(
+                        self.v_schema
+                    )
+                )
         else:
             v_filter = "and quote_ident(relnamespace::regnamespace::text) NOT IN ('information_schema','pg_catalog') "
-        v_table = self.v_connection.Query('''
+        v_table = self.v_connection.Query(
+            """
             SELECT quote_ident(relnamespace::regnamespace::text) AS sequence_schema,
                    quote_ident(relname) AS sequence_name,
                    oid
@@ -2247,20 +2648,27 @@ class PostgreSQL:
             WHERE relkind = 'S'
             {0}
             order by 1, 2
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
         return v_table
 
     @lock_required
     def QueryViews(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(t.relname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(t.relname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select quote_ident(t.relname) as table_name,
                    quote_ident(n.nspname) as table_schema,
                    t.oid
@@ -2270,26 +2678,37 @@ class PostgreSQL:
             where t.relkind = 'v'
             {0}
             order by 2, 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryViewFields(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(c.relname) as table_name,
                    quote_ident(a.attname) as column_name,
                    t.typname as data_type,
@@ -2334,32 +2753,45 @@ class PostgreSQL:
               {0}
             order by quote_ident(c.relname),
                      a.attnum
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def GetViewDefinition(self, p_view, p_schema):
-        return '''CREATE OR REPLACE VIEW {0}.{1} AS
+        return """CREATE OR REPLACE VIEW {0}.{1} AS
 {2}
-'''.format(p_schema, p_view,
-        self.v_connection.ExecuteScalar('''
+""".format(
+            p_schema,
+            p_view,
+            self.v_connection.ExecuteScalar(
+                """
                 select view_definition
                 from information_schema.views
                 where quote_ident(table_schema) = '{0}'
                   and quote_ident(table_name) = '{1}'
-            '''.format(p_schema, p_view)
-    ))
+            """.format(
+                    p_schema, p_view
+                )
+            ),
+        )
 
     @lock_required
     def QueryMaterializedViews(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(t.relname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(t.relname) not in ('information_schema','pg_catalog') "
+            )
+        return self.v_connection.Query(
+            """
             select quote_ident(t.relname) as table_name,
                    quote_ident(n.nspname) as schema_name,
                    t.oid
@@ -2369,26 +2801,39 @@ class PostgreSQL:
             where t.relkind = 'm'
             {0}
             order by 2, 1
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
-    def QueryMaterializedViewFields(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryMaterializedViewFields(
+        self, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(c.relname) as table_name,
                    quote_ident(a.attname) as column_name,
                    t.typname as data_type,
@@ -2433,54 +2878,69 @@ class PostgreSQL:
               {0}
             order by quote_ident(c.relname),
                      a.attnum
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def GetMaterializedViewDefinition(self, p_view, p_schema):
-        return '''DROP MATERIALIZED VIEW {0}.{1};
+        return """DROP MATERIALIZED VIEW {0}.{1};
 
 CREATE MATERIALIZED VIEW {0}.{1} AS
 {2}
 
 {3}
-'''.format(
-    p_schema,
-    p_view,
-    self.v_connection.ExecuteScalar(
-        '''
+""".format(
+            p_schema,
+            p_view,
+            self.v_connection.ExecuteScalar(
+                """
             select pg_get_viewdef('{0}.{1}'::regclass)
-        '''.format(
-            p_schema, p_view
+        """.format(
+                    p_schema, p_view
+                )
+            ),
+            "\n".join(
+                [
+                    v_row["definition"]
+                    for v_row in self.QueryTablesIndexesHelper(
+                        p_view, False, p_schema
+                    ).Rows
+                ]
+            ),
         )
-    ),
-    '\n'.join([
-        v_row['definition']
-        for v_row in self.QueryTablesIndexesHelper(p_view, False, p_schema).Rows
-    ])
-)
 
     @lock_required
     def QueryPhysicalReplicationSlots(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(slot_name) as slot_name
             from pg_replication_slots
             where slot_type = 'physical'
             order by 1
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryLogicalReplicationSlots(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(slot_name) as slot_name
             from pg_replication_slots
             where slot_type = 'logical'
             order by 1
-        ''', True)
+        """,
+            True,
+        )
 
     @lock_required
     def QueryPublications(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) >= 110000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) >= 110000:
+            return self.v_connection.Query(
+                """
                 select quote_ident(pubname) as pubname,
                        puballtables,
                        pubinsert,
@@ -2490,9 +2950,12 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                        oid
                 from pg_publication
                 order by 1
-            ''', True)
+            """,
+                True,
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select quote_ident(pubname) as pubname,
                        puballtables,
                        pubinsert,
@@ -2502,20 +2965,28 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                        oid
                 from pg_publication
                 order by 1
-            ''', True)
+            """,
+                True,
+            )
 
     @lock_required
     def QueryPublicationTables(self, p_pub):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(schemaname) || '.' || quote_ident(tablename) as table_name
             from pg_publication_tables
             where quote_ident(pubname) = '{0}'
             order by 1
-        '''.format(p_pub), True)
+        """.format(
+                p_pub
+            ),
+            True,
+        )
 
     @lock_required
     def QuerySubscriptions(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(s.subname) as subname,
                    s.subenabled,
                    s.subconninfo,
@@ -2526,11 +2997,16 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             on d.oid = s.subdbid
             where d.datname = '{0}'
             order by 1
-        '''.format(self.v_service), True)
+        """.format(
+                self.v_service
+            ),
+            True,
+        )
 
     @lock_required
     def QuerySubscriptionTables(self, p_sub):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(n.nspname) || '.' || quote_ident(c.relname) as table_name
             from pg_subscription s
             inner join pg_database d
@@ -2544,20 +3020,27 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             where d.datname = '{0}'
               and quote_ident(s.subname) = '{1}'
             order by 1
-        '''.format(self.v_service, p_sub), True)
+        """.format(
+                self.v_service, p_sub
+            ),
+            True,
+        )
 
     @lock_required
     def QueryForeignDataWrappers(self):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select fdwname,
                    oid
             from pg_foreign_data_wrapper
             order by 1
-        ''')
+        """
+        )
 
     @lock_required
     def QueryForeignServers(self, v_fdw):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select s.srvname,
                    s.srvtype,
                    s.srvversion,
@@ -2568,11 +3051,15 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             on w.oid = s.srvfdw
             where w.fdwname = '{0}'
             order by 1
-        '''.format(v_fdw))
+        """.format(
+                v_fdw
+            )
+        )
 
     @lock_required
     def QueryUserMappings(self, v_foreign_server):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select rolname,
                    umoptions
             from (
@@ -2616,20 +3103,26 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                      rolname
             ) x
             order by seq
-'''.format(v_foreign_server))
+""".format(
+                v_foreign_server
+            )
+        )
 
     @lock_required
     def QueryForeignTables(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            return self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            return self.v_connection.Query(
+                """
                 select quote_ident(c.relname) as table_name,
                        quote_ident(n.nspname) as table_schema,
                        false as is_partition,
@@ -2641,9 +3134,14 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                 where c.relkind = 'f'
                 {0}
                 order by 2, 1
-            '''.format(v_filter), True)
+            """.format(
+                    v_filter
+                ),
+                True,
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select quote_ident(c.relname) as table_name,
                        quote_ident(n.nspname) as table_schema,
                        c.relispartition as is_partition,
@@ -2655,26 +3153,39 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                 where c.relkind = 'f'
                 {0}
                 order by 2, 1
-            '''.format(v_filter), True)
+            """.format(
+                    v_filter
+                ),
+                True,
+            )
 
     @lock_required
-    def QueryForeignTablesFields(self, p_table=None, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+    def QueryForeignTablesFields(
+        self, p_table=None, p_all_schemas=False, p_schema=None
+    ):
+        v_filter = ""
         if not p_all_schemas:
             if p_table and p_schema:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(p_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    p_schema, p_table
+                )
             elif p_table:
-                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(self.v_schema, p_table)
+                v_filter = "and quote_ident(n.nspname) = '{0}' and quote_ident(c.relname) = '{1}' ".format(
+                    self.v_schema, p_table
+                )
             elif p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
             if p_table:
-                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(p_table)
+                v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') and quote_ident(c.relname) = {0}".format(
+                    p_table
+                )
             else:
                 v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select quote_ident(c.relname) as table_name,
                    quote_ident(a.attname) as column_name,
                    t.typname as data_type,
@@ -2729,19 +3240,26 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
               {0}
             order by quote_ident(c.relname),
                      a.attnum
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
 
     @lock_required
     def QueryTypes(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        v_table = self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        v_table = self.v_connection.Query(
+            """
             select quote_ident(n.nspname) as type_schema,
                    quote_ident(t.typname) as type_name,
                    t.oid
@@ -2753,20 +3271,27 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
               and t.typtype <> 'd'
             {0}
             order by 1, 2
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
         return v_table
 
     @lock_required
     def QueryDomains(self, p_all_schemas=False, p_schema=None):
-        v_filter = ''
+        v_filter = ""
         if not p_all_schemas:
             if p_schema:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(p_schema)
             else:
                 v_filter = "and quote_ident(n.nspname) = '{0}' ".format(self.v_schema)
         else:
-            v_filter = "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
-        v_table = self.v_connection.Query('''
+            v_filter = (
+                "and quote_ident(n.nspname) not in ('information_schema','pg_catalog') "
+            )
+        v_table = self.v_connection.Query(
+            """
             select quote_ident(n.nspname) as domain_schema,
                    quote_ident(t.typname) as domain_name,
                    t.oid
@@ -2778,14 +3303,20 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
               and t.typtype = 'd'
             {0}
             order by 1, 2
-        '''.format(v_filter), True)
+        """.format(
+                v_filter
+            ),
+            True,
+        )
         return v_table
 
-    def AdvancedObjectSearchData(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas, p_dataCategoryFilter):
+    def AdvancedObjectSearchData(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas, p_dataCategoryFilter
+    ):
         v_sqlDict = {}
 
-        if p_inSchemas != '': #At least one schema must be selected
-            v_columnsSql = '''
+        if p_inSchemas != "":  # At least one schema must be selected
+            v_columnsSql = """
                 select n.nspname as schema_name,
                        c.relname as table_name,
                        a.attname as column_name
@@ -2801,15 +3332,19 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                   and not a.attisdropped
                   and n.nspname in ({0})
                   --#FILTER_DATA_CATEGORY_FILTER# and n.nspname || '.' || c.relname like any (string_to_array('#VALUE_DATA_CATEGORY_FILTER#', '|'))
-            '''.format(p_inSchemas)
+            """.format(
+                p_inSchemas
+            )
 
-            if p_dataCategoryFilter.strip() != '':
-                v_columnsSql = v_columnsSql.replace('--#FILTER_DATA_CATEGORY_FILTER#', '').replace('#VALUE_DATA_CATEGORY_FILTER#', p_dataCategoryFilter)
+            if p_dataCategoryFilter.strip() != "":
+                v_columnsSql = v_columnsSql.replace(
+                    "--#FILTER_DATA_CATEGORY_FILTER#", ""
+                ).replace("#VALUE_DATA_CATEGORY_FILTER#", p_dataCategoryFilter)
 
             v_columnsTable = self.v_connection.Query(v_columnsSql)
 
             for v_columnRow in v_columnsTable.Rows:
-                v_sql = '''
+                v_sql = """
                     select 'Data' as category,
                            '{0}' as schema_name,
                            '{1}' as table_name,
@@ -2824,42 +3359,72 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                         --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and t.{2}::text ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
                         --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and t.{2}::text ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
                     ) t
-                '''.format(
-                    v_columnRow['schema_name'],
-                    v_columnRow['table_name'],
-                    v_columnRow['column_name']
+                """.format(
+                    v_columnRow["schema_name"],
+                    v_columnRow["table_name"],
+                    v_columnRow["column_name"],
                 )
 
-                if p_inSchemas != '':
-                    v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+                if p_inSchemas != "":
+                    v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                        "#VALUE_BY_SCHEMA#", p_inSchemas
+                    )
 
                 if p_regex:
                     if p_caseSentive:
-                        v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                        v_sql = v_sql.replace(
+                            "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                        ).replace(
+                            "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                            p_textPattern.replace("'", "''"),
+                        )
                     else:
-                        v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                        v_sql = v_sql.replace(
+                            "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                        ).replace(
+                            "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                            p_textPattern.replace("'", "''"),
+                        )
                 else:
                     if p_caseSentive:
-                        v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                        v_sql = v_sql.replace(
+                            "--#FILTER_PATTERN_CASE_SENSITIVE#", ""
+                        ).replace(
+                            "#VALUE_PATTERN_CASE_SENSITIVE#",
+                            p_textPattern.replace("'", "''"),
+                        )
                     else:
-                        v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                        v_sql = v_sql.replace(
+                            "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                        ).replace(
+                            "#VALUE_PATTERN_CASE_INSENSITIVE#",
+                            p_textPattern.replace("'", "''"),
+                        )
 
-                v_key = '{0}.{1}'.format(v_columnRow['schema_name'], v_columnRow['table_name'])
+                v_key = "{0}.{1}".format(
+                    v_columnRow["schema_name"], v_columnRow["table_name"]
+                )
 
                 if v_key not in v_sqlDict:
                     v_sqlDict[v_key] = v_sql
                 else:
-                    v_sqlDict[v_key] += '''
+                    v_sqlDict[
+                        v_key
+                    ] += """
 
                         union
 
                         {0}
-                    '''.format(v_sql)
+                    """.format(
+                        v_sql
+                    )
 
         return v_sqlDict
 
-    def AdvancedObjectSearchFKName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchFKName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'FK Name'::text as category,
                    tc.table_schema::text as schema_name,
                    tc.table_name::text as table_name,
@@ -2874,26 +3439,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and tc.constraint_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and tc.constraint_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(tc.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchFunctionDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchFunctionDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Function Definition'::text as category,
                    y.schema_name::text as schema_name,
                    ''::text as table_name,
@@ -2920,26 +3505,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(y.function_definition) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and y.function_definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and y.function_definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchFunctionName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchFunctionName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Function Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -2956,26 +3561,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and p.proname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and p.proname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchProcedureDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchProcedureDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Procedure Definition'::text as category,
                    y.schema_name::text as schema_name,
                    ''::text as table_name,
@@ -3002,26 +3627,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(y.procedure_definition) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and y.procedure_definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and y.procedure_definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchProcedureName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchProcedureName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Procedure Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -3038,26 +3683,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and p.proname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and p.proname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchIndexName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchIndexName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Index Name'::text as category,
                    i.schemaname::text as schema_name,
                    i.tablename::text as table_name,
@@ -3071,26 +3736,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and i.indexname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and i.indexname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(i.schemaname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchMaterializedViewColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchMaterializedViewColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Materialized View Column Name'::text as category,
                    n.nspname::text as schema_name,
                    c.relname::text as table_name,
@@ -3113,26 +3798,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and a.attname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and a.attname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchMaterializedViewName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchMaterializedViewName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Materialized View Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -3149,26 +3854,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and c.relname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and c.relname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchPKName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchPKName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'PK Name'::text as category,
                    tc.table_schema::text as schema_name,
                    tc.table_name::text as table_name,
@@ -3183,26 +3908,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and tc.constraint_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and tc.constraint_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(tc.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchSchemaName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchSchemaName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Schema Name'::text as category,
                    ''::text as schema_name,
                    ''::text as table_name,
@@ -3215,26 +3960,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(n.nspname) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and n.nspname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and n.nspname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchSequenceName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchSequenceName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Sequence Name'::text as category,
                    s.sequence_schema::text as schema_name,
                    ''::text as table_name,
@@ -3248,26 +4013,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and s.sequence_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and s.sequence_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(s.sequence_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTableColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTableColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Table Column Name'::text as category,
                    c.table_schema::text as schema_name,
                    c.table_name::text as table_name,
@@ -3284,26 +4069,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and c.column_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and c.column_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(c.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTableName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTableName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Table Name'::text as category,
                    t.table_schema::text as schema_name,
                    ''::text as table_name,
@@ -3318,26 +4123,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and t.table_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and t.table_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(t.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTriggerName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTriggerName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Trigger Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -3354,26 +4179,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and p.proname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and p.proname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTriggerSource(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTriggerSource(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Trigger Source'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -3390,26 +4235,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and p.prosrc ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and p.prosrc ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchUniqueName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchUniqueName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Unique Name'::text as category,
                    tc.table_schema::text as schema_name,
                    tc.table_name::text as table_name,
@@ -3424,26 +4289,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and tc.constraint_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and tc.constraint_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(tc.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchViewColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchViewColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'View Column Name'::text as category,
                    c.table_schema::text as schema_name,
                    c.table_name::text as table_name,
@@ -3459,26 +4344,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and c.column_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and c.column_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(c.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchViewName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchViewName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'View Name'::text as category,
                    v.table_schema::text as schema_name,
                    ''::text as table_name,
@@ -3492,26 +4397,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and v.table_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and v.table_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(v.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchCheckName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchCheckName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Check Name'::text as category,
                    quote_ident(n.nspname)::text as schema_name,
                    quote_ident(t.relname)::text as table_name,
@@ -3528,26 +4453,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(c.conname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(c.conname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(n.nspname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchRuleName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchRuleName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Rule Name'::text as category,
                    quote_ident(schemaname)::text as schema_name,
                    quote_ident(tablename)::text as table_name,
@@ -3560,26 +4505,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(rulename) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(rulename) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(schemaname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchRuleDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchRuleDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Rule Definition'::text as category,
                    quote_ident(schemaname)::text as schema_name,
                    quote_ident(tablename)::text as table_name,
@@ -3592,27 +4557,47 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(schemaname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchInheritedTableName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000:
-            v_sql = '''
+    def AdvancedObjectSearchInheritedTableName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000:
+            v_sql = """
                 select 'Inherited Table Name'::text as category,
                        quote_ident(np.nspname)::text as schema_name,
                        quote_ident(cp.relname)::text as table_name,
@@ -3633,9 +4618,9 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                 --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(cc.relname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
                 --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(cc.relname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
                 --#FILTER_BY_SCHEMA#  and lower(quote_ident(np.nspname)) in (#VALUE_BY_SCHEMA#)
-            '''
+            """
         else:
-            v_sql = '''
+            v_sql = """
                 select 'Inherited Table Name'::text as category,
                        quote_ident(np.nspname)::text as schema_name,
                        quote_ident(cp.relname)::text as table_name,
@@ -3656,26 +4641,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
                 --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(cc.relname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
                 --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(cc.relname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
                 --#FILTER_BY_SCHEMA#  and lower(quote_ident(np.nspname)) in (#VALUE_BY_SCHEMA#)
-            '''
+            """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchPartitionName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchPartitionName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Partition Name'::text as category,
                    quote_ident(np.nspname)::text as schema_name,
                    quote_ident(cp.relname)::text as table_name,
@@ -3696,26 +4701,44 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(cc.relname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(cc.relname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(np.nspname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
     def AdvancedObjectSearchRoleName(self, p_textPattern, p_caseSentive, p_regex):
-        v_sql = '''
+        v_sql = """
             select 'Role Name'::text as category,
                    ''::text as schema_name,
                    ''::text as table_name,
@@ -3727,23 +4750,39 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(quote_ident(rolname)) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(rolname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(rolname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
     def AdvancedObjectSearchTablespaceName(self, p_textPattern, p_caseSentive, p_regex):
-        v_sql = '''
+        v_sql = """
             select 'Tablespace Name'::text as category,
                    ''::text as schema_name,
                    ''::text as table_name,
@@ -3755,23 +4794,39 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(quote_ident(spcname)) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(spcname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(spcname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
     def AdvancedObjectSearchExtensionName(self, p_textPattern, p_caseSentive, p_regex):
-        v_sql = '''
+        v_sql = """
             select 'Extension Name'::text as category,
                    ''::text as schema_name,
                    ''::text as table_name,
@@ -3783,23 +4838,41 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(quote_ident(extname)) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(extname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(extname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchFKColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchFKColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             with select_fks as (
                 select distinct
                        quote_ident(kcu1.constraint_schema) as table_schema,
@@ -3850,26 +4923,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and sf.r_column_name ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and sf.r_column_name ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(sf.r_table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchPKColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchPKColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'PK Column Name'::text as category,
                    quote_ident(tc.table_schema)::text as schema_name,
                    quote_ident(tc.table_name)::text as table_name,
@@ -3888,26 +4981,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(kc.column_name) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(kc.column_name) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(tc.table_schema)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchUniqueColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchUniqueColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Unique Column Name'::text as category,
                    quote_ident(tc.table_schema)::text as schema_name,
                    quote_ident(tc.table_name)::text as table_name,
@@ -3926,26 +5039,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(kc.column_name) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(kc.column_name) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(tc.table_schema)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchIndexColumnName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchIndexColumnName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select *
             from (
                 select 'Index Column Name'::text as category,
@@ -3962,26 +5095,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(t.match_value) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(t.match_value) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(t.schema_name)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchCheckDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchCheckDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Check Definition'::text as category,
                    quote_ident(n.nspname)::text as schema_name,
                    quote_ident(t.relname)::text as table_name,
@@ -4000,26 +5153,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and pg_get_constraintdef(c.oid) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and pg_get_constraintdef(c.oid) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(n.nspname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTableTriggerName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTableTriggerName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Table Trigger Name'::text as category,
                    quote_ident(n.nspname)::text as schema_name,
                    quote_ident(c.relname)::text as table_name,
@@ -4042,26 +5215,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and quote_ident(t.tgname) ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and quote_ident(t.tgname) ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(quote_ident(n.nspname)) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchMaterializedViewDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchMaterializedViewDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Materialized View Definition'::text as category,
                    y.schema_name::text as schema_name,
                    ''::text as table_name,
@@ -4083,26 +5276,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(y.mview_definition) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and y.mview_definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and y.mview_definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchViewDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchViewDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'View Definition'::text as category,
                    v.table_schema::text as schema_name,
                    ''::text as table_name,
@@ -4116,26 +5329,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and v.view_definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and v.view_definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(v.table_schema) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchTypeName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchTypeName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Type Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -4154,26 +5387,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and t.typname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and t.typname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchDomainName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchDomainName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Domain Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -4192,26 +5445,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and t.typname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and t.typname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchEventTriggerName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchEventTriggerName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Event Trigger Name'::text as category,
                    np.nspname::text as schema_name,
                    ''::text as table_name,
@@ -4229,26 +5502,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE#  and t.evtname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#  and t.evtname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(np.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchEventTriggerFunctionName(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchEventTriggerFunctionName(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Event Trigger Function Name'::text as category,
                    n.nspname::text as schema_name,
                    ''::text as table_name,
@@ -4266,26 +5559,46 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and p.proname ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and p.proname ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
             --#FILTER_BY_SCHEMA#  and lower(n.nspname) in (#VALUE_BY_SCHEMA#)
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearchEventTriggerFunctionDefinition(self, p_textPattern, p_caseSentive, p_regex, p_inSchemas):
-        v_sql = '''
+    def AdvancedObjectSearchEventTriggerFunctionDefinition(
+        self, p_textPattern, p_caseSentive, p_regex, p_inSchemas
+    ):
+        v_sql = """
             select 'Event Trigger Function Definition'::text as category,
                    y.schema_name::text as schema_name,
                    ''::text as table_name,
@@ -4313,28 +5626,54 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             --#FILTER_PATTERN_CASE_INSENSITIVE#  and lower(y.function_definition) like lower('#VALUE_PATTERN_CASE_INSENSITIVE#')
             --#FILTER_PATTERN_REGEX_CASE_SENSITIVE# and y.function_definition ~ '#VALUE_PATTERN_REGEX_CASE_SENSITIVE#'
             --#FILTER_PATTERN_REGEX_CASE_INSENSITIVE# and y.function_definition ~* '#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#'
-        '''
+        """
 
-        if p_inSchemas != '':
-            v_sql = v_sql.replace('--#FILTER_BY_SCHEMA#', '').replace('#VALUE_BY_SCHEMA#', p_inSchemas)
+        if p_inSchemas != "":
+            v_sql = v_sql.replace("--#FILTER_BY_SCHEMA#", "").replace(
+                "#VALUE_BY_SCHEMA#", p_inSchemas
+            )
 
         if p_regex:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_SENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_SENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_REGEX_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_REGEX_CASE_INSENSITIVE#",
+                    p_textPattern.replace("'", "''"),
+                )
         else:
             if p_caseSentive:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_SENSITIVE#', '').replace('#VALUE_PATTERN_CASE_SENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace("--#FILTER_PATTERN_CASE_SENSITIVE#", "").replace(
+                    "#VALUE_PATTERN_CASE_SENSITIVE#", p_textPattern.replace("'", "''")
+                )
             else:
-                v_sql = v_sql.replace('--#FILTER_PATTERN_CASE_INSENSITIVE#', '').replace('#VALUE_PATTERN_CASE_INSENSITIVE#', p_textPattern.replace("'", "''"))
+                v_sql = v_sql.replace(
+                    "--#FILTER_PATTERN_CASE_INSENSITIVE#", ""
+                ).replace(
+                    "#VALUE_PATTERN_CASE_INSENSITIVE#", p_textPattern.replace("'", "''")
+                )
 
         return v_sql
 
-    def AdvancedObjectSearch(self, p_textPattern, p_caseSentive, p_regex, p_categoryList, p_schemaList, p_dataCategoryFilter):
+    def AdvancedObjectSearch(
+        self,
+        p_textPattern,
+        p_caseSentive,
+        p_regex,
+        p_categoryList,
+        p_schemaList,
+        p_dataCategoryFilter,
+    ):
         v_sqlDict = {}
 
-        v_inSchemas = ''
+        v_inSchemas = ""
 
         if len(p_schemaList) > 0:
             for v_schema in p_schemaList:
@@ -4343,95 +5682,188 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
             v_inSchemas = v_inSchemas[:-2]
 
         if not p_regex:
-            if '%' not in p_textPattern.replace('\%', ''):
-                p_textPattern = '%{0}%'.format(p_textPattern)
+            if "%" not in p_textPattern.replace("\%", ""):
+                p_textPattern = "%{0}%".format(p_textPattern)
 
         for v_category in p_categoryList:
-            if v_category == 'Data':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchData(p_textPattern, p_caseSentive, p_regex, v_inSchemas, p_dataCategoryFilter)
-            elif v_category == 'FK Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchFKName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Function Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchFunctionDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Function Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchFunctionName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Index Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchIndexName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Materialized View Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchMaterializedViewColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Materialized View Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchMaterializedViewName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'PK Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchPKName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Schema Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchSchemaName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Sequence Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchSequenceName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Table Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTableColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Table Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTableName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Trigger Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTriggerName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Trigger Source':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTriggerSource(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Unique Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchUniqueName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'View Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchViewColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'View Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchViewName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Check Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchCheckName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Rule Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchRuleName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Rule Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchRuleDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Inherited Table Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchInheritedTableName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Partition Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchPartitionName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Role Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchRoleName(p_textPattern, p_caseSentive, p_regex)
-            elif v_category == 'Tablespace Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTablespaceName(p_textPattern, p_caseSentive, p_regex)
-            elif v_category == 'Extension Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchExtensionName(p_textPattern, p_caseSentive, p_regex)
-            elif v_category == 'FK Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchFKColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'PK Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchPKColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Unique Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchUniqueColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Index Column Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchIndexColumnName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Check Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchCheckDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Table Trigger Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTableTriggerName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Materialized View Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchMaterializedViewDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'View Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchViewDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Type Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchTypeName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Domain Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchDomainName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Event Trigger Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchEventTriggerName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Event Trigger Function Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchEventTriggerFunctionName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Event Trigger Function Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchEventTriggerFunctionDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Procedure Definition':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchProcedureDefinition(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
-            elif v_category == 'Procedure Name':
-                v_sqlDict[v_category] = self.AdvancedObjectSearchProcedureName(p_textPattern, p_caseSentive, p_regex, v_inSchemas)
+            if v_category == "Data":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchData(
+                    p_textPattern,
+                    p_caseSentive,
+                    p_regex,
+                    v_inSchemas,
+                    p_dataCategoryFilter,
+                )
+            elif v_category == "FK Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchFKName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Function Definition":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchFunctionDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Function Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchFunctionName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Index Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchIndexName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Materialized View Column Name":
+                v_sqlDict[
+                    v_category
+                ] = self.AdvancedObjectSearchMaterializedViewColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Materialized View Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchMaterializedViewName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "PK Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchPKName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Schema Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchSchemaName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Sequence Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchSequenceName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Table Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTableColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Table Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTableName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Trigger Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTriggerName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Trigger Source":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTriggerSource(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Unique Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchUniqueName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "View Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchViewColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "View Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchViewName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Check Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchCheckName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Rule Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchRuleName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Rule Definition":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchRuleDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Inherited Table Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchInheritedTableName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Partition Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchPartitionName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Role Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchRoleName(
+                    p_textPattern, p_caseSentive, p_regex
+                )
+            elif v_category == "Tablespace Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTablespaceName(
+                    p_textPattern, p_caseSentive, p_regex
+                )
+            elif v_category == "Extension Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchExtensionName(
+                    p_textPattern, p_caseSentive, p_regex
+                )
+            elif v_category == "FK Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchFKColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "PK Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchPKColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Unique Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchUniqueColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Index Column Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchIndexColumnName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Check Definition":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchCheckDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Table Trigger Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTableTriggerName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Materialized View Definition":
+                v_sqlDict[
+                    v_category
+                ] = self.AdvancedObjectSearchMaterializedViewDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "View Definition":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchViewDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Type Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchTypeName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Domain Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchDomainName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Event Trigger Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchEventTriggerName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Event Trigger Function Name":
+                v_sqlDict[
+                    v_category
+                ] = self.AdvancedObjectSearchEventTriggerFunctionName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Event Trigger Function Definition":
+                v_sqlDict[
+                    v_category
+                ] = self.AdvancedObjectSearchEventTriggerFunctionDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Procedure Definition":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchProcedureDefinition(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
+            elif v_category == "Procedure Name":
+                v_sqlDict[v_category] = self.AdvancedObjectSearchProcedureName(
+                    p_textPattern, p_caseSentive, p_regex, v_inSchemas
+                )
 
         return v_sqlDict
 
     def TemplateCreateRole(self):
-        return Template('''CREATE ROLE name
+        return Template(
+            """CREATE ROLE name
 --[ ENCRYPTED | UNENCRYPTED ] PASSWORD 'password'
 --SUPERUSER | NOSUPERUSER
 --CREATEDB | NOCREATEDB
@@ -4448,10 +5880,12 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
 --ADMIN role_name [, ...]
 --USER role_name [, ...]
 --SYSID uid
-''')
+"""
+        )
 
     def TemplateAlterRole(self):
-        return Template('''ALTER ROLE #role_name#
+        return Template(
+            """ALTER ROLE #role_name#
 --SUPERUSER | NOSUPERUSER
 --CREATEDB | NOCREATEDB
 --CREATEROLE | NOCREATEROLE
@@ -4467,20 +5901,24 @@ CREATE MATERIALIZED VIEW {0}.{1} AS
 --[ IN DATABASE database_name ] SET configuration_parameter FROM CURRENT
 --[ IN DATABASE database_name ] RESET configuration_parameter
 --[ IN DATABASE database_name ] RESET ALL
-''')
+"""
+        )
 
     def TemplateDropRole(self):
-        return Template('DROP ROLE #role_name#')
+        return Template("DROP ROLE #role_name#")
 
     def TemplateCreateTablespace(self):
-        return Template('''CREATE TABLESPACE name
+        return Template(
+            """CREATE TABLESPACE name
 LOCATION 'directory'
 --OWNER new_owner | CURRENT_USER | SESSION_USER
 --WITH ( tablespace_option = value [, ... ] )
-''')
+"""
+        )
 
     def TemplateAlterTablespace(self):
-        return Template('''ALTER TABLESPACE #tablespace_name#
+        return Template(
+            """ALTER TABLESPACE #tablespace_name#
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET seq_page_cost = value
@@ -4489,14 +5927,16 @@ LOCATION 'directory'
 --RESET random_page_cost
 --SET effective_io_concurrency = value
 --RESET effective_io_concurrency
-''')
+"""
+        )
 
     def TemplateDropTablespace(self):
-        return Template('DROP TABLESPACE #tablespace_name#')
+        return Template("DROP TABLESPACE #tablespace_name#")
 
     def TemplateCreateDatabase(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90500:
-            return Template('''CREATE DATABASE name
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90500:
+            return Template(
+                """CREATE DATABASE name
 --OWNER user_name
 --TEMPLATE template
 --ENCODING encoding
@@ -4504,9 +5944,11 @@ LOCATION 'directory'
 --LC_CTYPE lc_ctype
 --TABLESPACE tablespace
 --CONNECTION LIMIT connlimit
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''CREATE DATABASE name
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """CREATE DATABASE name
 --OWNER user_name
 --TEMPLATE template
 --ENCODING encoding
@@ -4516,9 +5958,11 @@ LOCATION 'directory'
 --ALLOW_CONNECTIONS allowconn
 --CONNECTION LIMIT connlimit
 --IS_TEMPLATE istemplate
-''')
+"""
+            )
         else:
-            return Template('''CREATE DATABASE name
+            return Template(
+                """CREATE DATABASE name
 --OWNER user_name
 --TEMPLATE template
 --ENCODING encoding
@@ -4529,10 +5973,12 @@ LOCATION 'directory'
 --ALLOW_CONNECTIONS allowconn
 --CONNECTION LIMIT connlimit
 --IS_TEMPLATE istemplate
-''')
+"""
+            )
 
     def TemplateAlterDatabase(self):
-        return Template('''ALTER DATABASE #database_name#
+        return Template(
+            """ALTER DATABASE #database_name#
 --ALLOW_CONNECTIONS allowconn
 --CONNECTION LIMIT connlimit
 --IS_TEMPLATE istemplate
@@ -4543,60 +5989,78 @@ LOCATION 'directory'
 --SET configuration_parameter FROM CURRENT
 --RESET configuration_parameter
 --RESET ALL
-''')
+"""
+        )
 
     def TemplateDropDatabase(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('DROP DATABASE #database_name#')
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template("DROP DATABASE #database_name#")
         else:
-            return Template('''DROP DATABASE #database_name#
+            return Template(
+                """DROP DATABASE #database_name#
 --WITH ( FORCE )
-''')
+"""
+            )
 
     def TemplateCreateExtension(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''CREATE EXTENSION name
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """CREATE EXTENSION name
 --SCHEMA schema_name
 --VERSION VERSION
 --FROM old_version
-''')
+"""
+            )
         else:
-            return Template('''CREATE EXTENSION name
+            return Template(
+                """CREATE EXTENSION name
 --SCHEMA schema_name
 --VERSION VERSION
-''')
+"""
+            )
 
     def TemplateAlterExtension(self):
-        return Template('''ALTER EXTENSION #extension_name#
+        return Template(
+            """ALTER EXTENSION #extension_name#
 --UPDATE [ TO new_version ]
 --SET SCHEMA new_schema
 --ADD member_object
 --DROP member_object
-''')
+"""
+        )
 
     def TemplateDropExtension(self):
-        return Template('''DROP EXTENSION #extension_name#
+        return Template(
+            """DROP EXTENSION #extension_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateSchema(self):
-        return Template('''CREATE SCHEMA schema_name
+        return Template(
+            """CREATE SCHEMA schema_name
 --AUTHORIZATION [ GROUP ] user_name | CURRENT_USER | SESSION_USER
-''')
+"""
+        )
 
     def TemplateAlterSchema(self):
-        return Template('''ALTER SCHEMA #schema_name#
+        return Template(
+            """ALTER SCHEMA #schema_name#
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
-''')
+"""
+        )
 
     def TemplateDropSchema(self):
-        return Template('''DROP SCHEMA #schema_name#
+        return Template(
+            """DROP SCHEMA #schema_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateSequence(self):
-        return Template('''CREATE SEQUENCE #schema_name#.name
+        return Template(
+            """CREATE SEQUENCE #schema_name#.name
 --INCREMENT BY increment
 --MINVALUE minvalue | NO MINVALUE
 --MAXVALUE maxvalue | NO MAXVALUE
@@ -4604,10 +6068,12 @@ LOCATION 'directory'
 --CACHE cache
 --CYCLE
 --OWNED BY { table_name.column_name | NONE }
-''')
+"""
+        )
 
     def TemplateAlterSequence(self):
-        return Template('''ALTER SEQUENCE #sequence_name#
+        return Template(
+            """ALTER SEQUENCE #sequence_name#
 --INCREMENT BY increment
 --MINVALUE minvalue | NO MINVALUE
 --MAXVALUE maxvalue | NO MAXVALUE
@@ -4621,15 +6087,19 @@ LOCATION 'directory'
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
 --SET SCHEMA new_schema
-''')
+"""
+        )
 
     def TemplateDropSequence(self):
-        return Template('''DROP SEQUENCE #sequence_name#
+        return Template(
+            """DROP SEQUENCE #sequence_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateFunction(self):
-        return Template('''CREATE OR REPLACE FUNCTION #schema_name#.name
+        return Template(
+            """CREATE OR REPLACE FUNCTION #schema_name#.name
 --(
 --    [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ]
 --)
@@ -4649,11 +6119,13 @@ BEGIN
 -- definition
 END;
 $function$
-''')
+"""
+        )
 
     def TemplateAlterFunction(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER FUNCTION #function_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4675,9 +6147,11 @@ $function$
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4701,9 +6175,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4728,9 +6204,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER FUNCTION #function_name#
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4756,15 +6234,19 @@ $function$
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
 --NO DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
 
     def TemplateDropFunction(self):
-        return Template('''DROP FUNCTION #function_name#
+        return Template(
+            """DROP FUNCTION #function_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateProcedure(self):
-        return Template('''CREATE OR REPLACE PROCEDURE #schema_name#.name
+        return Template(
+            """CREATE OR REPLACE PROCEDURE #schema_name#.name
 --(
 --    [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ]
 --)
@@ -4778,10 +6260,12 @@ BEGIN
 -- definition
 END;
 $procedure$
-''')
+"""
+        )
 
     def TemplateAlterProcedure(self):
-        return Template('''ALTER PROCEDURE #procedure_name#
+        return Template(
+            """ALTER PROCEDURE #procedure_name#
 --EXTERNAL SECURITY INVOKER
 --SECURITY INVOKER
 --EXTERNAL SECURITY DEFINER
@@ -4794,15 +6278,19 @@ $procedure$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
+"""
+        )
 
     def TemplateDropProcedure(self):
-        return Template('''DROP PROCEDURE #procedure_name#
+        return Template(
+            """DROP PROCEDURE #procedure_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateTriggerFunction(self):
-        return Template('''CREATE OR REPLACE FUNCTION #schema_name#.name()
+        return Template(
+            """CREATE OR REPLACE FUNCTION #schema_name#.name()
 RETURNS trigger
 LANGUAGE plpgsql
 --IMMUTABLE | STABLE | VOLATILE
@@ -4815,11 +6303,13 @@ BEGIN
 -- definition
 END;
 $function$
-''')
+"""
+        )
 
     def TemplateAlterTriggerFunction(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER FUNCTION #function_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4841,9 +6331,11 @@ $function$
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4867,9 +6359,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4894,9 +6388,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER FUNCTION #function_name#
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4922,15 +6418,19 @@ $function$
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
 --NO DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
 
     def TemplateDropTriggerFunction(self):
-        return Template('''DROP FUNCTION #function_name#
+        return Template(
+            """DROP FUNCTION #function_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateEventTriggerFunction(self):
-        return Template('''CREATE OR REPLACE FUNCTION #schema_name#.name()
+        return Template(
+            """CREATE OR REPLACE FUNCTION #schema_name#.name()
 RETURNS event_trigger
 LANGUAGE plpgsql
 --IMMUTABLE | STABLE | VOLATILE
@@ -4943,11 +6443,13 @@ BEGIN
 -- definition
 END;
 $function$
-''')
+"""
+        )
 
     def TemplateAlterEventTriggerFunction(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER FUNCTION #function_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4969,9 +6471,11 @@ $function$
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -4995,9 +6499,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER FUNCTION #function_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -5022,9 +6528,11 @@ $function$
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER FUNCTION #function_name#
+            return Template(
+                """ALTER FUNCTION #function_name#
 --CALLED ON NULL INPUT
 --RETURNS NULL ON NULL INPUT
 --STRICT
@@ -5050,16 +6558,20 @@ $function$
 --SET SCHEMA new_schema
 --DEPENDS ON EXTENSION extension_name
 --NO DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
 
     def TemplateDropEventTriggerFunction(self):
-        return Template('''DROP FUNCTION #function_name#
+        return Template(
+            """DROP FUNCTION #function_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateAggregate(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''CREATE AGGREGATE #schema_name#.name
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """CREATE AGGREGATE #schema_name#.name
 --([ argmode ] [ argname ] arg_data_type [ , ... ])
 --ORDER BY [ argmode ] [ argname ] arg_data_type [ , ... ] )
 (
@@ -5078,9 +6590,11 @@ $function$
 --    , MINITCOND = minitial_condition
 --    , SORTOP = sort_operator
 )
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return Template('''CREATE AGGREGATE #schema_name#.name
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return Template(
+                """CREATE AGGREGATE #schema_name#.name
 --([ argmode ] [ argname ] arg_data_type [ , ... ])
 --ORDER BY [ argmode ] [ argname ] arg_data_type [ , ... ] )
 (
@@ -5103,9 +6617,11 @@ STYPE = state_data_type
 --    , SORTOP = sort_operator
 --    , PARALLEL = { SAFE | RESTRICTED | UNSAFE }
 )
-''')
+"""
+            )
         else:
-            return Template('''CREATE AGGREGATE #schema_name#.name
+            return Template(
+                """CREATE AGGREGATE #schema_name#.name
 --([ argmode ] [ argname ] arg_data_type [ , ... ])
 --ORDER BY [ argmode ] [ argname ] arg_data_type [ , ... ] )
 (
@@ -5130,32 +6646,40 @@ STYPE = state_data_type
 --    , SORTOP = sort_operator
 --    , PARALLEL = { SAFE | RESTRICTED | UNSAFE }
 )
-''')
+"""
+            )
 
     def TemplateAlterAggregate(self):
-        return Template('''ALTER AGGREGATE #aggregate_name#
+        return Template(
+            """ALTER AGGREGATE #aggregate_name#
 --RENAME TO new_name
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --SET SCHEMA new_schema
-''')
+"""
+        )
 
     def TemplateDropAggregate(self):
-        return Template('''DROP AGGREGATE #aggregate_name#
+        return Template(
+            """DROP AGGREGATE #aggregate_name#
 --RESTRICT
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateView(self):
-        return Template('''CREATE [ OR REPLACE ] [ TEMP | TEMPORARY ] [ RECURSIVE ] VIEW #schema_name#.name
+        return Template(
+            """CREATE [ OR REPLACE ] [ TEMP | TEMPORARY ] [ RECURSIVE ] VIEW #schema_name#.name
 --WITH ( check_option = local | cascaded )
 --WITH ( security_barrier = true | false )
 AS
 SELECT ...
-''')
+"""
+        )
 
     def TemplateAlterView(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER VIEW #view_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER VIEW #view_name#
 --ALTER COLUMN column_name SET DEFAULT expression
 --ALTER COLUMN column_name DROP DEFAULT
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
@@ -5167,9 +6691,11 @@ SELECT ...
 --RESET ( security_barrier )
 
 --ALTER TABLE #view_name# RENAME COLUMN column_name TO new_column_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER VIEW #view_name#
+            return Template(
+                """ALTER VIEW #view_name#
 --ALTER COLUMN column_name SET DEFAULT expression
 --ALTER COLUMN column_name DROP DEFAULT
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
@@ -5180,29 +6706,37 @@ SELECT ...
 --SET ( security_barrier = { true | false } )
 --RESET ( check_option )
 --RESET ( security_barrier )
-''')
+"""
+            )
 
     def TemplateDropView(self):
-        return Template('''DROP VIEW #view_name#
+        return Template(
+            """DROP VIEW #view_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateMaterializedView(self):
-        return Template('''CREATE MATERIALIZED VIEW #schema_name#.name AS
+        return Template(
+            """CREATE MATERIALIZED VIEW #schema_name#.name AS
 SELECT ...
 --WITH NO DATA
-''')
+"""
+        )
 
     def TemplateRefreshMaterializedView(self):
-        return Template('''REFRESH MATERIALIZED VIEW
+        return Template(
+            """REFRESH MATERIALIZED VIEW
 --CONCURRENTLY
 #view_name#
 --WITH NO DATA
-''')
+"""
+        )
 
     def TemplateAlterMaterializedView(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER MATERIALIZED VIEW #view_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER MATERIALIZED VIEW #view_name#
 --ALTER COLUMN column_name SET STATISTICS integer
 --ALTER COLUMN column_name SET ( attribute_option = value )
 --ALTER COLUMN column_name RESET ( attribute_option )
@@ -5216,9 +6750,11 @@ SELECT ...
 --RENAME TO new_name
 --SET SCHEMA new_schema
 --SET TABLESPACE new_tablespace [ NOWAIT ]
-''')
+"""
+            )
         else:
-            return Template('''ALTER MATERIALIZED VIEW #view_name#
+            return Template(
+                """ALTER MATERIALIZED VIEW #view_name#
 --ALTER COLUMN column_name SET STATISTICS integer
 --ALTER COLUMN column_name SET ( attribute_option = value )
 --ALTER COLUMN column_name RESET ( attribute_option )
@@ -5233,16 +6769,20 @@ SELECT ...
 --RENAME TO new_name
 --SET SCHEMA new_schema
 --SET TABLESPACE new_tablespace [ NOWAIT ]
-''')
+"""
+            )
 
     def TemplateDropMaterializedView(self):
-        return Template('''DROP MATERIALIZED VIEW #view_name#
+        return Template(
+            """DROP MATERIALIZED VIEW #view_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateTable(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''CREATE
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """CREATE
 --TEMPORARY
 --UNLOGGED
 TABLE #schema_name#.table_name
@@ -5284,9 +6824,11 @@ TABLE #schema_name#.table_name
 --WITHOUT OIDS
 --ON COMMIT { PRESERVE ROWS | DELETE ROWS | DROP }
 --TABLESPACE tablespace_name
-''')
+"""
+            )
         else:
-            return Template('''CREATE
+            return Template(
+                """CREATE
 --TEMPORARY
 --UNLOGGED
 TABLE #schema_name#.table_name
@@ -5327,11 +6869,13 @@ TABLE #schema_name#.table_name
 --WITHOUT OIDS
 --ON COMMIT { PRESERVE ROWS | DELETE ROWS | DROP }
 --TABLESPACE tablespace_name
-''')
+"""
+            )
 
     def TemplateAlterTable(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''ALTER TABLE
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """ALTER TABLE
 --ONLY
 #table_name#
 --ADD [ COLUMN ] [ IF NOT EXISTS ] column_name data_type [ COLLATE collation ] [ column_constraint [ ... ] ]
@@ -5385,9 +6929,11 @@ TABLE #schema_name#.table_name
 --ALL IN TABLESPACE name [ OWNED BY role_name [, ... ] ] SET TABLESPACE new_tablespace [ NOWAIT ]
 --ATTACH PARTITION partition_name FOR VALUES partition_bound_spec
 --DETACH PARTITION partition_name
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER TABLE
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER TABLE
 --ONLY
 #table_name#
 --ADD [ COLUMN ] [ IF NOT EXISTS ] column_name data_type [ COLLATE collation ] [ column_constraint [ ... ] ]
@@ -5440,9 +6986,11 @@ TABLE #schema_name#.table_name
 --ALL IN TABLESPACE name [ OWNED BY role_name [, ... ] ] SET TABLESPACE new_tablespace [ NOWAIT ]
 --ATTACH PARTITION partition_name FOR VALUES partition_bound_spec
 --DETACH PARTITION partition_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER TABLE
+            return Template(
+                """ALTER TABLE
 --ONLY
 #table_name#
 --ADD [ COLUMN ] [ IF NOT EXISTS ] column_name data_type [ COLLATE collation ] [ column_constraint [ ... ] ]
@@ -5496,22 +7044,28 @@ TABLE #schema_name#.table_name
 --ALL IN TABLESPACE name [ OWNED BY role_name [, ... ] ] SET TABLESPACE new_tablespace [ NOWAIT ]
 --ATTACH PARTITION partition_name FOR VALUES partition_bound_spec
 --DETACH PARTITION partition_name
-''')
+"""
+            )
 
     def TemplateDropTable(self):
-        return Template('''DROP TABLE #table_name#
+        return Template(
+            """DROP TABLE #table_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateColumn(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD COLUMN name data_type
 --COLLATE collation
 --column_constraint [ ... ] ]
-''')
+"""
+        )
 
     def TemplateAlterColumn(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 --ALTER COLUMN #column_name#
 --RENAME COLUMN #column_name# TO new_column
 --TYPE data_type [ COLLATE collation ] [ USING expression ]
@@ -5523,49 +7077,60 @@ ADD COLUMN name data_type
 --SET ( attribute_option = value [, ... ] )
 --RESET ( attribute_option [, ... ] )
 --SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
-'''
-)
+"""
+        )
 
     def TemplateDropColumn(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP COLUMN #column_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreatePrimaryKey(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD CONSTRAINT name
 PRIMARY KEY ( column_name [, ... ] )
 --WITH ( storage_parameter [= value] [, ... ] )
 --WITH OIDS
 --WITHOUT OIDS
 --USING INDEX TABLESPACE tablespace_name
-''')
+"""
+        )
 
     def TemplateDropPrimaryKey(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP CONSTRAINT #constraint_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateUnique(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD CONSTRAINT name
 UNIQUE ( column_name [, ... ] )
 --WITH ( storage_parameter [= value] [, ... ] )
 --WITH OIDS
 --WITHOUT OIDS
 --USING INDEX TABLESPACE tablespace_name
-''')
+"""
+        )
 
     def TemplateDropUnique(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP CONSTRAINT #constraint_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateForeignKey(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD CONSTRAINT name
 FOREIGN KEY ( column_name [, ... ] )
 REFERENCES reftable [ ( refcolumn [, ... ] ) ]
@@ -5573,69 +7138,85 @@ REFERENCES reftable [ ( refcolumn [, ... ] ) ]
 --ON DELETE { NO ACTION | RESTRICT | CASCADE | SET NULL | SET DEFAULT }
 --ON UPDATE { NO ACTION | RESTRICT | CASCADE | SET NULL | SET DEFAULT }
 --NOT VALID
-''')
+"""
+        )
 
     def TemplateDropForeignKey(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP CONSTRAINT #constraint_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateIndex(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return Template('''CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return Template(
+                """CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
 ON #table_name#
 --USING method
 ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
 --WITH ( storage_parameter = value [, ... ] )
 --WHERE predicate
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
 ON [ ONLY ] #table_name#
 --USING method
 ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
 --INCLUDE ( column_name [, ...] )
 --WITH ( storage_parameter = value [, ... ] )
 --WHERE predicate
-''')
+"""
+            )
         else:
-            return Template('''CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
+            return Template(
+                """CREATE [ UNIQUE ] INDEX [ CONCURRENTLY ] name
 ON [ ONLY ] #table_name#
 --USING method
 ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass [ ( opclass_parameter = value [, ... ] ) ] ] [ ASC | DESC ] [ NULLS { FIRST | LAST } ] [, ...] )
 --INCLUDE ( column_name [, ...] )
 --WITH ( storage_parameter = value [, ... ] )
 --WHERE predicate
-''')
+"""
+            )
 
     def TemplateAlterIndex(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER INDEX #index_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER INDEX #index_name#
 --RENAME to new_name
 --SET TABLESPACE tablespace_name
 --SET ( storage_parameter = value [, ... ] )
 --RESET ( storage_parameter [, ... ] )
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return Template('''ALTER INDEX #index_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return Template(
+                """ALTER INDEX #index_name#
 --RENAME to new_name
 --SET TABLESPACE tablespace_name
 --DEPENDS ON EXTENSION extension_name
 --SET ( storage_parameter = value [, ... ] )
 --RESET ( storage_parameter [, ... ] )
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER INDEX #index_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER INDEX #index_name#
 --RENAME to new_name
 --SET TABLESPACE tablespace_name
 --ATTACH PARTITION index_name
 --DEPENDS ON EXTENSION extension_name
 --SET ( storage_parameter = value [, ... ] )
 --RESET ( storage_parameter [, ... ] )
-''')
+"""
+            )
         else:
-            return Template('''ALTER INDEX #index_name#
+            return Template(
+                """ALTER INDEX #index_name#
 --RENAME to new_name
 --SET TABLESPACE tablespace_name
 --ATTACH PARTITION index_name
@@ -5643,82 +7224,104 @@ ON [ ONLY ] #table_name#
 --NO DEPENDS ON EXTENSION extension_name
 --SET ( storage_parameter = value [, ... ] )
 --RESET ( storage_parameter [, ... ] )
-''')
+"""
+            )
 
     def TemplateClusterIndex(self):
-        return Template('''CLUSTER
+        return Template(
+            """CLUSTER
 --VERBOSE
 #table_name#
 USING #index_name#
-''')
+"""
+        )
 
     def TemplateReindex(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90500:
-            return Template('REINDEX INDEX #index_name#')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''REINDEX
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90500:
+            return Template("REINDEX INDEX #index_name#")
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """REINDEX
 --( VERBOSE )
 INDEX #index_name#
-''')
+"""
+            )
         else:
-            return Template('''REINDEX
+            return Template(
+                """REINDEX
 --( VERBOSE )
 INDEX
 --CONCURRENTLY
 #index_name#
-''')
+"""
+            )
 
     def TemplateDropIndex(self):
-        return Template('''DROP INDEX [ CONCURRENTLY ] #index_name#
+        return Template(
+            """DROP INDEX [ CONCURRENTLY ] #index_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateCheck(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD CONSTRAINT name
 CHECK ( expression )
-''')
+"""
+        )
 
     def TemplateDropCheck(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP CONSTRAINT #constraint_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateExclude(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 ADD CONSTRAINT name
 --USING index_method
 EXCLUDE ( exclude_element WITH operator [, ... ] )
 --index_parameters
 --WHERE ( predicate )
-''')
+"""
+        )
 
     def TemplateDropExclude(self):
-        return Template('''ALTER TABLE #table_name#
+        return Template(
+            """ALTER TABLE #table_name#
 DROP CONSTRAINT #constraint_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateRule(self):
-        return Template('''CREATE RULE name
+        return Template(
+            """CREATE RULE name
 AS ON { SELECT | INSERT | UPDATE | DELETE }
 TO #table_name#
 --WHERE condition
 --DO ALSO { NOTHING | command | ( command ; command ... ) }
 --DO INSTEAD { NOTHING | command | ( command ; command ... ) }
-''')
+"""
+        )
 
     def TemplateAlterRule(self):
-        return Template('ALTER RULE #rule_name# ON #table_name# RENAME TO new_name')
+        return Template("ALTER RULE #rule_name# ON #table_name# RENAME TO new_name")
 
     def TemplateDropRule(self):
-        return Template('''DROP RULE #rule_name# ON #table_name#
+        return Template(
+            """DROP RULE #rule_name# ON #table_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateTrigger(self):
-        return Template('''CREATE TRIGGER name
+        return Template(
+            """CREATE TRIGGER name
 --BEFORE { INSERT [ OR ] | UPDATE [ OF column_name [, ... ] ] [ OR ] | DELETE [ OR ] | TRUNCATE }
 --AFTER { INSERT [ OR ] | UPDATE [ OF column_name [, ... ] ] [ OR ] | DELETE [ OR ] | TRUNCATE }
 ON #table_name#
@@ -5728,10 +7331,12 @@ ON #table_name#
 --FOR EACH STATEMENT
 --WHEN ( condition )
 --EXECUTE PROCEDURE function_name ( arguments )
-''')
+"""
+        )
 
     def TemplateCreateViewTrigger(self):
-        return Template('''CREATE TRIGGER name
+        return Template(
+            """CREATE TRIGGER name
 --BEFORE { INSERT [ OR ] | UPDATE [ OF column_name [, ... ] ] [ OR ] | DELETE }
 --AFTER { INSERT [ OR ] | UPDATE [ OF column_name [, ... ] ] [ OR ] | DELETE }
 --INSTEAD OF { INSERT [ OR ] | UPDATE [ OF column_name [, ... ] ] [ OR ] | DELETE }
@@ -5742,99 +7347,123 @@ ON #table_name#
 --FOR EACH STATEMENT
 --WHEN ( condition )
 --EXECUTE PROCEDURE function_name ( arguments )
-''')
+"""
+        )
 
     def TemplateAlterTrigger(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''ALTER TRIGGER #trigger_name# ON #table_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """ALTER TRIGGER #trigger_name# ON #table_name#
 --RENAME TO new_name
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER TRIGGER #trigger_name# ON #table_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER TRIGGER #trigger_name# ON #table_name#
 --RENAME TO new_name
 --DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER TRIGGER #trigger_name# ON #table_name#
+            return Template(
+                """ALTER TRIGGER #trigger_name# ON #table_name#
 --RENAME TO new_name
 --DEPENDS ON EXTENSION extension_name
 --NO DEPENDS ON EXTENSION extension_name
-''')
+"""
+            )
 
     def TemplateEnableTrigger(self):
-        return Template('''ALTER TABLE #table_name# ENABLE
+        return Template(
+            """ALTER TABLE #table_name# ENABLE
 --REPLICA
 --ALWAYS
 TRIGGER #trigger_name#
-''')
+"""
+        )
 
     def TemplateDisableTrigger(self):
-        return Template('ALTER TABLE #table_name# DISABLE TRIGGER #trigger_name#')
+        return Template("ALTER TABLE #table_name# DISABLE TRIGGER #trigger_name#")
 
     def TemplateDropTrigger(self):
-        return Template('''DROP TRIGGER #trigger_name# ON #table_name#
+        return Template(
+            """DROP TRIGGER #trigger_name# ON #table_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateEventTrigger(self):
-        return Template('''CREATE EVENT TRIGGER name
+        return Template(
+            """CREATE EVENT TRIGGER name
 --ON ddl_command_start
 --ON ddl_command_end
 --ON table_rewrite
 --ON sql_drop
 --WHEN TAG IN ( filter_value [, ...] )
 EXECUTE PROCEDURE function_name()
-''')
+"""
+        )
 
     def TemplateAlterEventTrigger(self):
-        return Template('''ALTER EVENT TRIGGER #trigger_name#
+        return Template(
+            """ALTER EVENT TRIGGER #trigger_name#
 --OWNER TO new_owner
 --OWNER TO CURRENT_USER
 --OWNER TO SESSION_USER
 --RENAME TO new_name
-''')
+"""
+        )
 
     def TemplateEnableEventTrigger(self):
-        return Template('''ALTER EVENT TRIGGER #trigger_name# ENABLE
+        return Template(
+            """ALTER EVENT TRIGGER #trigger_name# ENABLE
 --REPLICA
 --ALWAYS
-''')
+"""
+        )
 
     def TemplateDisableEventTrigger(self):
-        return Template('ALTER EVENT TRIGGER #trigger_name# DISABLE')
+        return Template("ALTER EVENT TRIGGER #trigger_name# DISABLE")
 
     def TemplateDropEventTrigger(self):
-        return Template('''DROP EVENT TRIGGER #trigger_name#
+        return Template(
+            """DROP EVENT TRIGGER #trigger_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateInherited(self):
-        return Template('''CREATE TABLE name (
+        return Template(
+            """CREATE TABLE name (
     CHECK ( condition )
 ) INHERITS (#table_name#)
-''')
+"""
+        )
 
     def TemplateNoInheritPartition(self):
-        return Template('ALTER TABLE #partition_name# NO INHERIT #table_name#')
+        return Template("ALTER TABLE #partition_name# NO INHERIT #table_name#")
 
     def TemplateCreatePartition(self):
-        return Template('''CREATE TABLE name PARTITION OF #table_name#
+        return Template(
+            """CREATE TABLE name PARTITION OF #table_name#
 --FOR VALUES
 --IN ( { numeric_literal | string_literal | NULL } [, ...] )
 --FROM ( { numeric_literal | string_literal | MINVALUE | MAXVALUE } [, ...] ) TO ( { numeric_literal | string_literal | MINVALUE | MAXVALUE } [, ...] )
 --WITH ( MODULUS numeric_literal, REMAINDER numeric_literal )
 --DEFAULT
 --PARTITION BY { RANGE | LIST | HASH } ( { column_name | ( expression ) } [ COLLATE collation ] [ opclass ] [, ... ] ) ]
-''')
+"""
+        )
 
     def TemplateDetachPartition(self):
-        return Template('ALTER TABLE #table_name# DETACH PARTITION #partition_name#')
+        return Template("ALTER TABLE #table_name# DETACH PARTITION #partition_name#")
 
     def TemplateDropPartition(self):
-        return Template('DROP TABLE #partition_name#')
+        return Template("DROP TABLE #partition_name#")
 
     def TemplateCreateType(self):
-        return Template('''CREATE TYPE #schema_name#.name
+        return Template(
+            """CREATE TYPE #schema_name#.name
 
 -- AS (
 --    attribute_name data_type [ COLLATE collation ] [, ... ]
@@ -5870,11 +7499,13 @@ EXECUTE PROCEDURE function_name()
 --    , COLLATABLE = collatable
 
 -- )
-''')
+"""
+        )
 
     def TemplateAlterType(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            return Template('''ALTER TYPE #type_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            return Template(
+                """ALTER TYPE #type_name#
 --ADD ATTRIBUTE attribute_name data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
 --DROP ATTRIBUTE [ IF EXISTS ] attribute_name [ CASCADE | RESTRICT ]
 --ALTER ATTRIBUTE attribute_name [ SET DATA ] TYPE data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
@@ -5883,9 +7514,11 @@ EXECUTE PROCEDURE function_name()
 --RENAME TO new_name
 --SET SCHEMA new_schema
 --ADD VALUE [ IF NOT EXISTS ] new_enum_value [ { BEFORE | AFTER } existing_enum_value ]
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER TYPE #type_name#
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER TYPE #type_name#
 --ADD ATTRIBUTE attribute_name data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
 --DROP ATTRIBUTE [ IF EXISTS ] attribute_name [ CASCADE | RESTRICT ]
 --ALTER ATTRIBUTE attribute_name [ SET DATA ] TYPE data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
@@ -5895,9 +7528,11 @@ EXECUTE PROCEDURE function_name()
 --SET SCHEMA new_schema
 --ADD VALUE [ IF NOT EXISTS ] new_enum_value [ { BEFORE | AFTER } existing_enum_value ]
 --RENAME VALUE existing_enum_value TO new_enum_value
-''')
+"""
+            )
         else:
-            return Template('''ALTER TYPE #type_name#
+            return Template(
+                """ALTER TYPE #type_name#
 --ADD ATTRIBUTE attribute_name data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
 --DROP ATTRIBUTE [ IF EXISTS ] attribute_name [ CASCADE | RESTRICT ]
 --ALTER ATTRIBUTE attribute_name [ SET DATA ] TYPE data_type [ COLLATE collation ] [ CASCADE | RESTRICT ]
@@ -5913,24 +7548,30 @@ EXECUTE PROCEDURE function_name()
 --SET ( TYPMOD_OUT = value )
 --SET ( ANALYZE = value )
 --SET ( STORAGE = plain | extended | external | main )
-''')
+"""
+            )
 
     def TemplateDropType(self):
-        return Template('''DROP TYPE #type_name#
+        return Template(
+            """DROP TYPE #type_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateDomain(self):
-        return Template('''CREATE DOMAIN #schema_name#.name AS data_type
+        return Template(
+            """CREATE DOMAIN #schema_name#.name AS data_type
 --COLLATE collation
 --DEFAULT expression
 -- [ CONSTRAINT constraint_name ] NOT NULL
 -- [ CONSTRAINT constraint_name ] NULL
 -- [ CONSTRAINT constraint_name ] CHECK (expression)
-''')
+"""
+        )
 
     def TemplateAlterDomain(self):
-        return Template('''ALTER DOMAIN #domain_name#
+        return Template(
+            """ALTER DOMAIN #domain_name#
 --SET DEFAULT expression
 --DROP DEFAULT
 --SET NOT NULL
@@ -5942,29 +7583,37 @@ EXECUTE PROCEDURE function_name()
 --OWNER TO new_owner
 --RENAME TO new_name
 --SET SCHEMA new_schema
-''')
+"""
+        )
 
     def TemplateDropDomain(self):
-        return Template('''DROP DOMAIN #domain_name#
+        return Template(
+            """DROP DOMAIN #domain_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateVacuum(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''VACUUM
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''VACUUM
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
 --DISABLE_PAGE_SKIPPING
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''VACUUM
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
@@ -5972,9 +7621,11 @@ EXECUTE PROCEDURE function_name()
 --SKIP_LOCKED
 --INDEX_CLEANUP
 --TRUNCATE
-''')
+"""
+            )
         else:
-            return Template('''VACUUM
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
@@ -5983,29 +7634,35 @@ EXECUTE PROCEDURE function_name()
 --INDEX_CLEANUP
 --TRUNCATE
 --PARALLEL number_of_parallel_workers
-''')
+"""
+            )
 
     def TemplateVacuumTable(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return Template('''VACUUM
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
 #table_name#
 --(column_name, [, ...])
-''')
+"""
+            )
 
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return Template('''VACUUM
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
 --DISABLE_PAGE_SKIPPING
 #table_name#
 --(column_name, [, ...])
-''')
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''VACUUM
+"""
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
@@ -6015,9 +7672,11 @@ EXECUTE PROCEDURE function_name()
 --TRUNCATE
 #table_name#
 --(column_name, [, ...])
-''')
+"""
+            )
         else:
-            return Template('''VACUUM
+            return Template(
+                """VACUUM
 --FULL
 --FREEZE
 --ANALYZE
@@ -6028,174 +7687,253 @@ EXECUTE PROCEDURE function_name()
 --PARALLEL number_of_parallel_workers
 #table_name#
 --(column_name, [, ...])
-''')
+"""
+            )
 
     def TemplateAnalyze(self):
-        return Template('ANALYZE')
+        return Template("ANALYZE")
 
     def TemplateAnalyzeTable(self):
-        return Template('''ANALYZE #table_name#
+        return Template(
+            """ANALYZE #table_name#
 --(column_name, [, ...])
-''')
+"""
+        )
 
     def TemplateSelect(self, p_schema, p_table, p_kind):
-        if p_kind == 't':
-            v_sql = 'SELECT t.'
+        if p_kind == "t":
+            v_sql = "SELECT t."
             v_fields = self.QueryTablesFields(p_table, False, p_schema)
             if len(v_fields.Rows) > 0:
-                v_sql += '\n     , t.'.join([r['column_name'] for r in v_fields.Rows])
-            v_sql += '\nFROM {0}.{1} t'.format(p_schema, p_table)
+                v_sql += "\n     , t.".join([r["column_name"] for r in v_fields.Rows])
+            v_sql += "\nFROM {0}.{1} t".format(p_schema, p_table)
             v_pk = self.QueryTablesPrimaryKeys(p_table, False, p_schema)
             if len(v_pk.Rows) > 0:
-                v_fields = self.QueryTablesPrimaryKeysColumns(v_pk.Rows[0]['constraint_name'], p_table, False, p_schema)
+                v_fields = self.QueryTablesPrimaryKeysColumns(
+                    v_pk.Rows[0]["constraint_name"], p_table, False, p_schema
+                )
                 if len(v_fields.Rows) > 0:
-                    v_sql += '\nORDER BY t.'
-                    v_sql += '\n       , t.'.join([r['column_name'] for r in v_fields.Rows])
-        elif p_kind == 'v':
-            v_sql = 'SELECT t.'
+                    v_sql += "\nORDER BY t."
+                    v_sql += "\n       , t.".join(
+                        [r["column_name"] for r in v_fields.Rows]
+                    )
+        elif p_kind == "v":
+            v_sql = "SELECT t."
             v_fields = self.QueryViewFields(p_table, False, p_schema)
             if len(v_fields.Rows) > 0:
-                v_sql += '\n     , t.'.join([r['column_name'] for r in v_fields.Rows])
-            v_sql += '\nFROM {0}.{1} t'.format(p_schema, p_table)
-        elif p_kind == 'm':
-            v_sql = 'SELECT t.'
+                v_sql += "\n     , t.".join([r["column_name"] for r in v_fields.Rows])
+            v_sql += "\nFROM {0}.{1} t".format(p_schema, p_table)
+        elif p_kind == "m":
+            v_sql = "SELECT t."
             v_fields = self.QueryMaterializedViewFields(p_table, False, p_schema)
             if len(v_fields.Rows) > 0:
-                v_sql += '\n     , t.'.join([r['column_name'] for r in v_fields.Rows])
-            v_sql += '\nFROM {0}.{1} t'.format(p_schema, p_table)
-        elif p_kind == 'f':
-            v_sql = 'SELECT t.'
+                v_sql += "\n     , t.".join([r["column_name"] for r in v_fields.Rows])
+            v_sql += "\nFROM {0}.{1} t".format(p_schema, p_table)
+        elif p_kind == "f":
+            v_sql = "SELECT t."
             v_fields = self.QueryForeignTablesFields(p_table, False, p_schema)
             if len(v_fields.Rows) > 0:
-                v_sql += '\n     , t.'.join([r['column_name'] for r in v_fields.Rows])
-            v_sql += '\nFROM {0}.{1} t'.format(p_schema, p_table)
+                v_sql += "\n     , t.".join([r["column_name"] for r in v_fields.Rows])
+            v_sql += "\nFROM {0}.{1} t".format(p_schema, p_table)
         else:
-            v_sql = 'SELECT t.*\nFROM {0}.{1} t'.format(p_schema, p_table)
+            v_sql = "SELECT t.*\nFROM {0}.{1} t".format(p_schema, p_table)
         return Template(v_sql)
 
     def TemplateInsert(self, p_schema, p_table):
         v_fields = self.QueryTablesFields(p_table, False, p_schema)
         if len(v_fields.Rows) > 0:
-            v_sql = 'INSERT INTO {0}.{1} (\n'.format(p_schema, p_table)
+            v_sql = "INSERT INTO {0}.{1} (\n".format(p_schema, p_table)
             v_pk = self.QueryTablesPrimaryKeys(p_table, False, p_schema)
             if len(v_pk.Rows) > 0:
-                v_table_pk_fields = self.QueryTablesPrimaryKeysColumns(v_pk.Rows[0]['constraint_name'], p_table, False, p_schema)
-                v_pk_fields = [r['column_name'] for r in v_table_pk_fields.Rows]
+                v_table_pk_fields = self.QueryTablesPrimaryKeysColumns(
+                    v_pk.Rows[0]["constraint_name"], p_table, False, p_schema
+                )
+                v_pk_fields = [r["column_name"] for r in v_table_pk_fields.Rows]
                 v_values = []
                 v_first = True
                 for r in v_fields.Rows:
                     if v_first:
-                        v_sql += '      {0}'.format(r['column_name'])
-                        if r['column_name'] in v_pk_fields:
-                            v_values.append('      ? -- {0} {1} PRIMARY KEY'.format(r['column_name'], r['data_type']))
-                        elif r['nullable'] == 'YES':
-                            v_values.append('      ? -- {0} {1} NULLABLE'.format(r['column_name'], r['data_type']))
+                        v_sql += "      {0}".format(r["column_name"])
+                        if r["column_name"] in v_pk_fields:
+                            v_values.append(
+                                "      ? -- {0} {1} PRIMARY KEY".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
+                        elif r["nullable"] == "YES":
+                            v_values.append(
+                                "      ? -- {0} {1} NULLABLE".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         else:
-                            v_values.append('      ? -- {0} {1}'.format(r['column_name'], r['data_type']))
+                            v_values.append(
+                                "      ? -- {0} {1}".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         v_first = False
                     else:
-                        v_sql += '\n    , {0}'.format(r['column_name'])
-                        if r['column_name'] in v_pk_fields:
-                            v_values.append('\n    , ? -- {0} {1} PRIMARY KEY'.format(r['column_name'], r['data_type']))
-                        elif r['nullable'] == 'YES':
-                            v_values.append('\n    , ? -- {0} {1} NULLABLE'.format(r['column_name'], r['data_type']))
+                        v_sql += "\n    , {0}".format(r["column_name"])
+                        if r["column_name"] in v_pk_fields:
+                            v_values.append(
+                                "\n    , ? -- {0} {1} PRIMARY KEY".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
+                        elif r["nullable"] == "YES":
+                            v_values.append(
+                                "\n    , ? -- {0} {1} NULLABLE".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         else:
-                            v_values.append('\n    , ? -- {0} {1}'.format(r['column_name'], r['data_type']))
+                            v_values.append(
+                                "\n    , ? -- {0} {1}".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
             else:
                 v_values = []
                 v_first = True
                 for r in v_fields.Rows:
                     if v_first:
-                        v_sql += '      {0}'.format(r['column_name'])
-                        if r['nullable'] == 'YES':
-                            v_values.append('      ? -- {0} {1} NULLABLE'.format(r['column_name'], r['data_type']))
+                        v_sql += "      {0}".format(r["column_name"])
+                        if r["nullable"] == "YES":
+                            v_values.append(
+                                "      ? -- {0} {1} NULLABLE".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         else:
-                            v_values.append('      ? -- {0} {1}'.format(r['column_name'], r['data_type']))
+                            v_values.append(
+                                "      ? -- {0} {1}".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         v_first = False
                     else:
-                        v_sql += '\n    , {0}'.format(r['column_name'])
-                        if r['nullable'] == 'YES':
-                            v_values.append('\n    , ? -- {0} {1} NULLABLE'.format(r['column_name'], r['data_type']))
+                        v_sql += "\n    , {0}".format(r["column_name"])
+                        if r["nullable"] == "YES":
+                            v_values.append(
+                                "\n    , ? -- {0} {1} NULLABLE".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
                         else:
-                            v_values.append('\n    , ? -- {0} {1}'.format(r['column_name'], r['data_type']))
-            v_sql += '\n) VALUES (\n'
+                            v_values.append(
+                                "\n    , ? -- {0} {1}".format(
+                                    r["column_name"], r["data_type"]
+                                )
+                            )
+            v_sql += "\n) VALUES (\n"
             for v in v_values:
                 v_sql += v
-            v_sql += '\n)'
+            v_sql += "\n)"
         else:
-            v_sql = ''
+            v_sql = ""
         return Template(v_sql)
 
     def TemplateUpdate(self, p_schema, p_table):
         v_fields = self.QueryTablesFields(p_table, False, p_schema)
         if len(v_fields.Rows) > 0:
-            v_sql = 'UPDATE {0}.{1}\nSET '.format(p_schema, p_table)
+            v_sql = "UPDATE {0}.{1}\nSET ".format(p_schema, p_table)
             v_pk = self.QueryTablesPrimaryKeys(p_table, False, p_schema)
             if len(v_pk.Rows) > 0:
-                v_table_pk_fields = self.QueryTablesPrimaryKeysColumns(v_pk.Rows[0]['constraint_name'], p_table, False, p_schema)
-                v_pk_fields = [r['column_name'] for r in v_table_pk_fields.Rows]
+                v_table_pk_fields = self.QueryTablesPrimaryKeysColumns(
+                    v_pk.Rows[0]["constraint_name"], p_table, False, p_schema
+                )
+                v_pk_fields = [r["column_name"] for r in v_table_pk_fields.Rows]
                 v_first = True
                 for r in v_fields.Rows:
                     if v_first:
-                        if r['column_name'] in v_pk_fields:
-                            v_sql += '{0} = ? -- {1} PRIMARY KEY'.format(r['column_name'], r['data_type'])
-                        elif r['nullable'] == 'YES':
-                            v_sql += '{0} = ? -- {1} NULLABLE'.format(r['column_name'], r['data_type'])
+                        if r["column_name"] in v_pk_fields:
+                            v_sql += "{0} = ? -- {1} PRIMARY KEY".format(
+                                r["column_name"], r["data_type"]
+                            )
+                        elif r["nullable"] == "YES":
+                            v_sql += "{0} = ? -- {1} NULLABLE".format(
+                                r["column_name"], r["data_type"]
+                            )
                         else:
-                            v_sql += '{0} = ? -- {1}'.format(r['column_name'], r['data_type'])
+                            v_sql += "{0} = ? -- {1}".format(
+                                r["column_name"], r["data_type"]
+                            )
                         v_first = False
                     else:
-                        if r['column_name'] in v_pk_fields:
-                            v_sql += '\n    , {0} = ? -- {1} PRIMARY KEY'.format(r['column_name'], r['data_type'])
-                        elif r['nullable'] == 'YES':
-                            v_sql += '\n    , {0} = ? -- {1} NULLABLE'.format(r['column_name'], r['data_type'])
+                        if r["column_name"] in v_pk_fields:
+                            v_sql += "\n    , {0} = ? -- {1} PRIMARY KEY".format(
+                                r["column_name"], r["data_type"]
+                            )
+                        elif r["nullable"] == "YES":
+                            v_sql += "\n    , {0} = ? -- {1} NULLABLE".format(
+                                r["column_name"], r["data_type"]
+                            )
                         else:
-                            v_sql += '\n    , {0} = ? -- {1}'.format(r['column_name'], r['data_type'])
+                            v_sql += "\n    , {0} = ? -- {1}".format(
+                                r["column_name"], r["data_type"]
+                            )
             else:
                 v_first = True
                 for r in v_fields.Rows:
                     if v_first:
-                        if r['nullable'] == 'YES':
-                            v_sql += '{0} = ? -- {1} NULLABLE'.format(r['column_name'], r['data_type'])
+                        if r["nullable"] == "YES":
+                            v_sql += "{0} = ? -- {1} NULLABLE".format(
+                                r["column_name"], r["data_type"]
+                            )
                         else:
-                            v_sql += '{0} = ? -- {1}'.format(r['column_name'], r['data_type'])
+                            v_sql += "{0} = ? -- {1}".format(
+                                r["column_name"], r["data_type"]
+                            )
                         v_first = False
                     else:
-                        if r['nullable'] == 'YES':
-                            v_sql += '\n    , {0} = ? -- {1} NULLABLE'.format(r['column_name'], r['data_type'])
+                        if r["nullable"] == "YES":
+                            v_sql += "\n    , {0} = ? -- {1} NULLABLE".format(
+                                r["column_name"], r["data_type"]
+                            )
                         else:
-                            v_sql += '\n    , {0} = ? -- {1}'.format(r['column_name'], r['data_type'])
-            v_sql += '\nWHERE condition'
+                            v_sql += "\n    , {0} = ? -- {1}".format(
+                                r["column_name"], r["data_type"]
+                            )
+            v_sql += "\nWHERE condition"
         else:
-            v_sql = ''
+            v_sql = ""
         return Template(v_sql)
 
     def TemplateDelete(self):
-        return Template('''DELETE FROM
+        return Template(
+            """DELETE FROM
 --ONLY
 #table_name#
 WHERE condition
 --WHERE CURRENT OF cursor_name
 --RETURNING *
-''')
+"""
+        )
 
     def TemplateTruncate(self):
-        return Template('''TRUNCATE
+        return Template(
+            """TRUNCATE
 --ONLY
 #table_name#
 --RESTART IDENTITY
 --CASCADE
-''')
+"""
+        )
 
     def TemplateSelectFunction(self, p_schema, p_function, p_functionid):
-        v_table = self.v_connection.Query('''
+        v_table = self.v_connection.Query(
+            """
             select p.proretset
             from pg_proc p,
                  pg_namespace n
             where p.pronamespace = n.oid
               and n.nspname = '{0}'
               and n.nspname || '.' || p.proname || '(' || oidvectortypes(p.proargtypes) || ')' = '{1}'
-        '''.format(p_schema, p_functionid))
+        """.format(
+                p_schema, p_functionid
+            )
+        )
         if len(v_table.Rows) > 0:
             v_retset = v_table.Rows[0][0]
         else:
@@ -6203,95 +7941,108 @@ WHERE condition
         v_fields = self.QueryFunctionFields(p_functionid, p_schema)
         if len(v_fields.Rows) > 1:
             if v_retset:
-                v_sql = 'SELECT * FROM {0}.{1}(\n    '.format(p_schema, p_function)
+                v_sql = "SELECT * FROM {0}.{1}(\n    ".format(p_schema, p_function)
             else:
-                v_sql = 'SELECT {0}.{1}(\n    '.format(p_schema, p_function)
+                v_sql = "SELECT {0}.{1}(\n    ".format(p_schema, p_function)
             v_first = True
             for r in v_fields.Rows:
-                if r['name'].split(' ')[0] != '"returns':
-                    if r['type'] == 'I':
-                        v_type = 'IN'
-                    elif r['type'] == 'O':
-                        v_type = 'OUT'
+                if r["name"].split(" ")[0] != '"returns':
+                    if r["type"] == "I":
+                        v_type = "IN"
+                    elif r["type"] == "O":
+                        v_type = "OUT"
                     else:
-                        v_type = 'INOUT'
+                        v_type = "INOUT"
                     if v_first:
-                        v_sql += '? -- {0} {1}'.format(r['name'], v_type)
+                        v_sql += "? -- {0} {1}".format(r["name"], v_type)
                         v_first = False
                     else:
-                        v_sql += '\n  , ? -- {0} {1}'.format(r['name'], v_type)
-            v_sql += '\n)'
+                        v_sql += "\n  , ? -- {0} {1}".format(r["name"], v_type)
+            v_sql += "\n)"
         else:
             if v_retset:
-                v_sql = 'SELECT * FROM {0}.{1}()'.format(p_schema, p_function)
+                v_sql = "SELECT * FROM {0}.{1}()".format(p_schema, p_function)
             else:
-                v_sql = 'SELECT {0}.{1}()'.format(p_schema, p_function)
+                v_sql = "SELECT {0}.{1}()".format(p_schema, p_function)
         return Template(v_sql)
 
     def TemplateCallProcedure(self, p_schema, p_procedure, p_procedureid):
         v_fields = self.QueryProcedureFields(p_procedureid, p_schema)
         if len(v_fields.Rows) > 0:
-            v_sql = 'CALL {0}.{1}(\n    '.format(p_schema, p_procedure)
+            v_sql = "CALL {0}.{1}(\n    ".format(p_schema, p_procedure)
             v_first = True
             for r in v_fields.Rows:
-                if r['type'] == 'I':
-                    v_type = 'IN'
-                elif r['type'] == 'O':
-                    v_type = 'OUT'
+                if r["type"] == "I":
+                    v_type = "IN"
+                elif r["type"] == "O":
+                    v_type = "OUT"
                 else:
-                    v_type = 'INOUT'
+                    v_type = "INOUT"
                 if v_first:
-                    v_sql += '? -- {0} {1}'.format(r['name'], v_type)
+                    v_sql += "? -- {0} {1}".format(r["name"], v_type)
                     v_first = False
                 else:
-                    v_sql += '\n  , ? -- {0} {1}'.format(r['name'], v_type)
-            v_sql += '\n)'
+                    v_sql += "\n  , ? -- {0} {1}".format(r["name"], v_type)
+            v_sql += "\n)"
         else:
-            v_sql = 'CALL {0}.{1}()'.format(p_schema, p_procedure)
+            v_sql = "CALL {0}.{1}()".format(p_schema, p_procedure)
         return Template(v_sql)
 
     def TemplateCreatePhysicalReplicationSlot(self):
-        return Template('''SELECT * FROM pg_create_physical_replication_slot('slot_name')''')
+        return Template(
+            """SELECT * FROM pg_create_physical_replication_slot('slot_name')"""
+        )
 
     def TemplateDropPhysicalReplicationSlot(self):
-        return Template('''SELECT pg_drop_replication_slot('#slot_name#')''')
+        return Template("""SELECT pg_drop_replication_slot('#slot_name#')""")
 
     def TemplateCreateLogicalReplicationSlot(self):
         if int(self.v_version_num) >= 100000:
-            return Template('''SELECT * FROM pg_create_logical_replication_slot('slot_name', 'pgoutput')''')
+            return Template(
+                """SELECT * FROM pg_create_logical_replication_slot('slot_name', 'pgoutput')"""
+            )
         else:
-            return Template('''SELECT * FROM pg_create_logical_replication_slot('slot_name', 'test_decoding')''')
+            return Template(
+                """SELECT * FROM pg_create_logical_replication_slot('slot_name', 'test_decoding')"""
+            )
 
     def TemplateDropLogicalReplicationSlot(self):
-        return Template('''SELECT pg_drop_replication_slot('#slot_name#')''')
+        return Template("""SELECT pg_drop_replication_slot('#slot_name#')""")
 
     def TemplateCreatePublication(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''CREATE PUBLICATION name
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """CREATE PUBLICATION name
 --FOR TABLE [ ONLY ] table_name [ * ] [, ...]
 --FOR ALL TABLES
 --WITH ( publish = 'insert, update, delete, truncate' )
-''')
+"""
+            )
         else:
-            return Template('''CREATE PUBLICATION name
+            return Template(
+                """CREATE PUBLICATION name
 --FOR TABLE [ ONLY ] table_name [ * ] [, ...]
 --FOR ALL TABLES
 --WITH ( publish = 'insert, update, delete, truncate' )
 --WITH ( publish_via_partition_root = true | false )
-''')
+"""
+            )
 
     def TemplateAlterPublication(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER PUBLICATION #pub_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER PUBLICATION #pub_name#
 --ADD TABLE [ ONLY ] table_name [ * ] [, ...]
 --SET TABLE [ ONLY ] table_name [ * ] [, ...]
 --DROP TABLE [ ONLY ] table_name [ * ] [, ...]
 --SET ( publish = 'insert, update, delete, truncate' )
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
-''')
+"""
+            )
         else:
-            return Template('''ALTER PUBLICATION #pub_name#
+            return Template(
+                """ALTER PUBLICATION #pub_name#
 --ADD TABLE [ ONLY ] table_name [ * ] [, ...]
 --SET TABLE [ ONLY ] table_name [ * ] [, ...]
 --DROP TABLE [ ONLY ] table_name [ * ] [, ...]
@@ -6299,21 +8050,25 @@ WHERE condition
 --SET ( publish_via_partition_root = true | false )
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
-''')
+"""
+            )
 
     def TemplateDropPublication(self):
-        return Template('''DROP PUBLICATION #pub_name#
+        return Template(
+            """DROP PUBLICATION #pub_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateAddPublicationTable(self):
-        return Template('ALTER PUBLICATION #pub_name# ADD TABLE table_name')
+        return Template("ALTER PUBLICATION #pub_name# ADD TABLE table_name")
 
     def TemplateDropPublicationTable(self):
-        return Template('ALTER PUBLICATION #pub_name# DROP TABLE #table_name#')
+        return Template("ALTER PUBLICATION #pub_name# DROP TABLE #table_name#")
 
     def TemplateCreateSubscription(self):
-        return Template('''CREATE SUBSCRIPTION name
+        return Template(
+            """CREATE SUBSCRIPTION name
 CONNECTION 'conninfo'
 PUBLICATION pub_name [, ...]
 --WITH (
@@ -6324,10 +8079,12 @@ PUBLICATION pub_name [, ...]
 --, synchronous_commit = { on | remote_apply | remote_write | local | off }
 --, connect = { true | false }
 --)
-''')
+"""
+        )
 
     def TemplateAlterSubscription(self):
-        return Template('''ALTER SUBSCRIPTION #sub_name#
+        return Template(
+            """ALTER SUBSCRIPTION #sub_name#
 --CONNECTION 'conninfo'
 --SET PUBLICATION pub_name [, ...] [ WITH ( refresh = { true | false } ) ]
 --REFRESH PUBLICATION [ WITH ( copy_data = { true | false } ) ]
@@ -6339,24 +8096,30 @@ PUBLICATION pub_name [, ...]
 --)
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
-''')
+"""
+        )
 
     def TemplateDropSubscription(self):
-        return Template('''DROP SUBSCRIPTION #sub_name#
+        return Template(
+            """DROP SUBSCRIPTION #sub_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateForeignDataWrapper(self):
-        return Template('''CREATE FOREIGN DATA WRAPPER name
+        return Template(
+            """CREATE FOREIGN DATA WRAPPER name
 --HANDLER handler_function
 --NO HANDLER
 --VALIDATOR validator_function
 --NO VALIDATOR
 --OPTIONS ( option 'value' [, ... ] )
-''')
+"""
+        )
 
     def TemplateAlterForeignDataWrapper(self):
-        return Template('''ALTER FOREIGN DATA WRAPPER #fdwname#
+        return Template(
+            """ALTER FOREIGN DATA WRAPPER #fdwname#
 --HANDLER handler_function
 --NO HANDLER
 --VALIDATOR validator_function
@@ -6366,67 +8129,83 @@ PUBLICATION pub_name [, ...]
 --OPTIONS ( DROP option )
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
-''')
+"""
+        )
 
     def TemplateDropForeignDataWrapper(self):
-        return Template('''DROP FOREIGN DATA WRAPPER #fdwname#
+        return Template(
+            """DROP FOREIGN DATA WRAPPER #fdwname#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateForeignServer(self):
-        return Template('''CREATE SERVER server_name
+        return Template(
+            """CREATE SERVER server_name
 --TYPE 'server_type'
 --VERSION 'server_version'
 FOREIGN DATA WRAPPER #fdwname#
 --OPTIONS ( option 'value' [, ... ] )
-''')
+"""
+        )
 
     def TemplateAlterForeignServer(self):
-        return Template('''ALTER SERVER #srvname#
+        return Template(
+            """ALTER SERVER #srvname#
 --VERSION 'new_version'
 --OPTIONS ( [ ADD ] option ['value'] [, ... ] )
 --OPTIONS ( SET option ['value'] )
 --OPTIONS ( DROP option )
 --OWNER TO { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
-''')
+"""
+        )
 
     def TemplateDropForeignServer(self):
-        return Template('''DROP SERVER #srvname#
+        return Template(
+            """DROP SERVER #srvname#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateUserMapping(self):
-        return Template('''CREATE USER MAPPING
+        return Template(
+            """CREATE USER MAPPING
 --FOR user_name
 --FOR CURRENT_USER
 --FOR PUBLIC
 SERVER #srvname#
 --OPTIONS ( option 'value' [ , ... ] )
-''')
+"""
+        )
 
     def TemplateAlterUserMapping(self):
-        return Template('''ALTER USER MAPPING FOR #user_name#
+        return Template(
+            """ALTER USER MAPPING FOR #user_name#
 SERVER #srvname#
 --OPTIONS ( [ ADD ] option ['value'] [, ... ] )
 --OPTIONS ( SET option ['value'] )
 --OPTIONS ( DROP option )
-''')
+"""
+        )
 
     def TemplateImportForeignSchema(self):
-        return Template('''IMPORT FOREIGN SCHEMA remote_schema
+        return Template(
+            """IMPORT FOREIGN SCHEMA remote_schema
 --LIMIT TO ( table_name [, ...] )
 --EXCEPT ( table_name [, ...] )
 FROM SERVER #srvname#
 INTO local_schema
 --OPTIONS ( option 'value' [, ... ] )
-''')
+"""
+        )
 
     def TemplateDropUserMapping(self):
-        return Template('DROP USER MAPPING FOR #user_name# SERVER #srvname#')
+        return Template("DROP USER MAPPING FOR #user_name# SERVER #srvname#")
 
     def TemplateCreateForeignTable(self):
-        return Template('''CREATE FOREIGN TABLE #schema_name#.table_name
+        return Template(
+            """CREATE FOREIGN TABLE #schema_name#.table_name
 --PARTITION OF parent_table
 (
     column_name data_type
@@ -6443,10 +8222,12 @@ INTO local_schema
 SERVER server_name
 --partition_bound_spec
 --OPTIONS ( option 'value' [, ... ] )
-''')
+"""
+        )
 
     def TemplateAlterForeignTable(self):
-        return Template('''ALTER FOREIGN TABLE #table_name#
+        return Template(
+            """ALTER FOREIGN TABLE #table_name#
 --ADD COLUMN column_name data_type [ COLLATE collation ] [ column_constraint [ ... ] ]
 --DROP COLUMN column_name [ CASCADE ]
 --ALTER [ COLUMN column_name [ SET DATA ] TYPE data_type [ COLLATE collation ]
@@ -6474,22 +8255,28 @@ SERVER server_name
 --RENAME COLUMN column_name TO new_column_name
 --RENAME TO new_name
 --SET SCHEMA new_schema
-''')
+"""
+        )
 
     def TemplateDropForeignTable(self):
-        return Template('''DROP FOREIGN TABLE #table_name#
+        return Template(
+            """DROP FOREIGN TABLE #table_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateForeignColumn(self):
-        return Template('''ALTER FOREIGN TABLE #table_name#
+        return Template(
+            """ALTER FOREIGN TABLE #table_name#
 ADD COLUMN name data_type
 --COLLATE collation
 --column_constraint [ ... ] ]
-''')
+"""
+        )
 
     def TemplateAlterForeignColumn(self):
-        return Template('''ALTER FOREIGN TABLE #table_name#
+        return Template(
+            """ALTER FOREIGN TABLE #table_name#
 --ALTER COLUMN #column_name#
 --RENAME COLUMN #column_name# TO new_column
 --TYPE data_type [ COLLATE collation ] [ USING expression ]
@@ -6502,45 +8289,54 @@ ADD COLUMN name data_type
 --RESET ( attribute_option [, ... ] )
 --SET STORAGE { PLAIN | EXTERNAL | EXTENDED | MAIN }
 --OPTIONS ( [ ADD | SET | DROP ] option ['value'] [, ... ] )
-'''
-)
+"""
+        )
 
     def TemplateDropForeignColumn(self):
-        return Template('''ALTER FOREIGN TABLE #table_name#
+        return Template(
+            """ALTER FOREIGN TABLE #table_name#
 DROP COLUMN #column_name#
 --CASCADE
-''')
+"""
+        )
 
     def TemplateCreateStatistics(self):
-        return Template('''CREATE STATISTICS #schema_name#.statistics_name
+        return Template(
+            """CREATE STATISTICS #schema_name#.statistics_name
 --( ndistinct )
 --( dependencies )
 --( mcv )
 ON column_name, column_name [, ...]
 FROM #table_name#
-''')
+"""
+        )
 
     def TemplateAlterStatistics(self):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return Template('''ALTER STATISTICS #statistics_name#
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return Template(
+                """ALTER STATISTICS #statistics_name#
 --OWNER to { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
 --SET SCHEMA new_schema
-''')
+"""
+            )
         else:
-            return Template('''ALTER STATISTICS #statistics_name#
+            return Template(
+                """ALTER STATISTICS #statistics_name#
 --OWNER to { new_owner | CURRENT_USER | SESSION_USER }
 --RENAME TO new_name
 --SET SCHEMA new_schema
 --SET STATISTICS new_target
-''')
+"""
+            )
 
     def TemplateDropStatistics(self):
-        return Template('DROP STATISTICS #statistics_name#')
+        return Template("DROP STATISTICS #statistics_name#")
 
     @lock_required
     def GetPropertiesRole(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select rolname as "Role",
                    oid as "OID",
                    rolsuper as "Super User",
@@ -6553,10 +8349,15 @@ FROM #table_name#
                    rolvaliduntil as "Valid Until"
             from pg_roles
             where quote_ident(rolname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesTablespace(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select t.spcname as "Tablespace",
                    r.rolname as "Owner",
                    t.oid as "OID",
@@ -6567,10 +8368,15 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = t.spcowner
             where quote_ident(t.spcname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesDatabase(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select d.datname as "Database",
                    r.rolname as "Owner",
                    pg_size_pretty(pg_database_size(d.oid)) as "Size",
@@ -6588,10 +8394,15 @@ FROM #table_name#
             inner join pg_tablespace t
             on t.oid = d.dattablespace
             where quote_ident(d.datname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesExtension(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    e.extname as "Extension",
                    r.rolname as "Owner",
@@ -6604,10 +8415,15 @@ FROM #table_name#
             inner join pg_namespace n
             on n.oid = e.extnamespace
             where e.extname = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesSchema(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    r.rolname as "Owner",
@@ -6616,11 +8432,16 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = n.nspowner
             where quote_ident(n.nspname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesTable(self, p_schema, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -6658,9 +8479,16 @@ FROM #table_name#
                 on 1 = 1
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000 and int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.Query('''
+            """.format(
+                    p_schema, p_object
+                )
+            )
+        elif (
+            int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000
+            and int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000
+        ):
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -6711,9 +8539,16 @@ FROM #table_name#
                 on 1 = 1
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) >= 110000 and int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return self.v_connection.Query('''
+            """.format(
+                    p_schema, p_object
+                )
+            )
+        elif (
+            int(self.v_connection.ExecuteScalar("show server_version_num")) >= 110000
+            and int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000
+        ):
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -6763,9 +8598,13 @@ FROM #table_name#
                 on 1 = 1
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -6814,13 +8653,16 @@ FROM #table_name#
                 on 1 = 1
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
 
     @lock_required
     def GetPropertiesTableField(self, p_schema, p_table, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT current_database() AS "Database",
                            n.nspname AS "Schema",
                            c.relname AS "Table",
@@ -6855,15 +8697,13 @@ FROM #table_name#
                             ON c.oid = a.attrelid
                     WHERE c.oid = '{0}.{1}'::regclass
                       AND a.attname = quote_ident('{2}')
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT current_database() AS "Database",
                            n.nspname AS "Schema",
                            c.relname AS "Table",
@@ -6899,15 +8739,13 @@ FROM #table_name#
                             ON c.oid = a.attrelid
                     WHERE c.oid = '{0}.{1}'::regclass
                       AND a.attname = quote_ident('{2}')
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT current_database() AS "Database",
                            n.nspname AS "Schema",
                            c.relname AS "Table",
@@ -6945,15 +8783,13 @@ FROM #table_name#
                             ON c.oid = a.attrelid
                     WHERE c.oid = '{0}.{1}'::regclass
                       AND a.attname = quote_ident('{2}')
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
         else:
             return self.v_connection.Query(
-                '''
+                """
                     SELECT current_database() AS "Database",
                            n.nspname AS "Schema",
                            c.relname AS "Table",
@@ -6992,16 +8828,15 @@ FROM #table_name#
                             ON c.oid = a.attrelid
                     WHERE c.oid = '{0}.{1}'::regclass
                       AND a.attname = quote_ident('{2}')
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
 
     @lock_required
     def GetPropertiesIndex(self, p_schema, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    c.relname as "Index",
@@ -7040,10 +8875,15 @@ FROM #table_name#
             on i.indexrelid = c.oid
             where quote_ident(n.nspname) = '{0}'
               and quote_ident(c.relname) = '{1}'
-        '''.format(p_schema, p_object))
+        """.format(
+                p_schema, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesSequence(self, p_schema, p_object):
-        v_table1 = self.v_connection.Query('''
+        v_table1 = self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    c.relname as "Sequence",
@@ -7068,9 +8908,13 @@ FROM #table_name#
             on 1 = 1
             where quote_ident(n.nspname) = '{0}'
               and quote_ident(c.relname) = '{1}'
-        '''.format(p_schema, p_object)).Transpose('Property', 'Value')
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            v_table2 = self.v_connection.Query('''
+        """.format(
+                p_schema, p_object
+            )
+        ).Transpose("Property", "Value")
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            v_table2 = self.v_connection.Query(
+                """
                 select last_value as "Last Value",
                        start_value as "Start Value",
                        increment_by as "Increment By",
@@ -7080,9 +8924,13 @@ FROM #table_name#
                        is_cycled as "Is Cycled",
                        is_called as "Is Called"
                 from {0}.{1}
-            '''.format(p_schema, p_object)).Transpose('Property', 'Value')
+            """.format(
+                    p_schema, p_object
+                )
+            ).Transpose("Property", "Value")
         else:
-            v_table2 = self.v_connection.Query('''
+            v_table2 = self.v_connection.Query(
+                """
                 select data_type as "Data Type",
                        last_value as "Last Value",
                        start_value as "Start Value",
@@ -7094,13 +8942,18 @@ FROM #table_name#
                 from pg_sequences
                 where schemaname = '{0}'
                   and sequencename = '{1}'
-            '''.format(p_schema, p_object)).Transpose('Property', 'Value')
+            """.format(
+                    p_schema, p_object
+                )
+            ).Transpose("Property", "Value")
             v_table1.Merge(v_table2)
         v_table1.Merge(v_table2)
         return v_table1
+
     @lock_required
     def GetPropertiesView(self, p_schema, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    c.relname as "View",
@@ -7113,11 +8966,16 @@ FROM #table_name#
             on r.oid = c.relowner
             where quote_ident(n.nspname) = '{0}'
               and quote_ident(c.relname) = '{1}'
-        '''.format(p_schema, p_object))
+        """.format(
+                p_schema, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesFunction(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        p.proname as "Function",
@@ -7147,9 +9005,13 @@ FROM #table_name#
                 inner join pg_language l
                 on l.oid = p.prolang
                 where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
-            '''.format(p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.Query('''
+            """.format(
+                    p_object
+                )
+            )
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        p.proname as "Function",
@@ -7180,9 +9042,13 @@ FROM #table_name#
                 inner join pg_language l
                 on l.oid = p.prolang
                 where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        p.proname as "Function",
@@ -7213,10 +9079,15 @@ FROM #table_name#
                 on l.oid = p.prolang
                 where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
                   and p.prokind = 'f'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
+
     @lock_required
     def GetPropertiesProcedure(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    p.proname as "Procedure",
@@ -7245,10 +9116,15 @@ FROM #table_name#
             on l.oid = p.prolang
             where quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' = '{0}'
               and p.prokind = 'p'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesTrigger(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    y.schema_name as "Schema",
                    y.table_name as "Table",
@@ -7306,10 +9182,15 @@ FROM #table_name#
             on y.schema_name = x.schema_name
             and y.table_name = x.table_name
             and y.trigger_name = x.trigger_name
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesEventTrigger(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    quote_ident(t.evtname) as "Event Trigger Name",
                    t.evtevent as "Event",
@@ -7326,13 +9207,16 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = t.evtowner
             where quote_ident(t.evtname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
 
     @lock_required
     def GetPropertiesAggregate(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
             return self.v_connection.Query(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -7405,13 +9289,13 @@ FROM #table_name#
                            ON a.aggmtranstype = t2.type_oid
                     WHERE p1.is_aggregate
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
             return self.v_connection.Query(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -7495,13 +9379,13 @@ FROM #table_name#
                            ON a.aggmtranstype = t2.type_oid
                     WHERE p1.is_aggregate
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
         else:
             return self.v_connection.Query(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -7587,14 +9471,15 @@ FROM #table_name#
                            ON a.aggmtranstype = t2.type_oid
                     WHERE p1.function_kind = 'a'
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
 
     @lock_required
     def GetPropertiesPK(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_constraint_attrs(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -7650,10 +9535,15 @@ FROM #table_name#
               and quote_ident(n.nspname) = '{0}'
               and quote_ident(t.relname) = '{1}'
               and quote_ident(c.conname) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesFK(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_constraint_attrs(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -7833,10 +9723,15 @@ FROM #table_name#
               and quote_ident(n.nspname) = '{0}'
               and quote_ident(t.relname) = '{1}'
               and quote_ident(c.conname) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesUnique(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_constraint_attrs(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -7892,10 +9787,15 @@ FROM #table_name#
               and quote_ident(n.nspname) = '{0}'
               and quote_ident(t.relname) = '{1}'
               and quote_ident(c.conname) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesCheck(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_constraint_attrs(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -7949,10 +9849,15 @@ FROM #table_name#
               and quote_ident(n.nspname) = '{0}'
               and quote_ident(t.relname) = '{1}'
               and quote_ident(c.conname) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesExclude(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             create or replace function pg_temp.fnc_omnidb_constraint_ops(text, text, text)
             returns text as $$
             select array_to_string(array(
@@ -8033,10 +9938,15 @@ FROM #table_name#
               and quote_ident(n.nspname) = '{0}'
               and quote_ident(t.relname) = '{1}'
               and quote_ident(c.conname) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesRule(self, p_schema, p_table, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    quote_ident(schemaname) as "Schema",
                    quote_ident(tablename) as "Table",
@@ -8045,11 +9955,16 @@ FROM #table_name#
             where quote_ident(schemaname) = '{0}'
               and quote_ident(tablename) = '{1}'
               and quote_ident(rulename) = '{2}'
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesForeignTable(self, p_schema, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -8096,9 +10011,16 @@ FROM #table_name#
                 on w.oid = s.srvfdw
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000 and int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.Query('''
+            """.format(
+                    p_schema, p_object
+                )
+            )
+        elif (
+            int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000
+            and int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000
+        ):
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -8157,9 +10079,13 @@ FROM #table_name#
                 on w.oid = s.srvfdw
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        n.nspname as "Schema",
                        c.relname as "Table",
@@ -8218,11 +10144,16 @@ FROM #table_name#
                 on w.oid = s.srvfdw
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(c.relname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
+
     @lock_required
     def GetPropertiesUserMapping(self, p_server, p_object):
-        if p_object == 'PUBLIC':
-            return self.v_connection.Query('''
+        if p_object == "PUBLIC":
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        u.oid as "OID",
                        'PUBLIC' as "User",
@@ -8236,9 +10167,13 @@ FROM #table_name#
                 on w.oid = s.srvfdw
                 where u.umuser = 0
                   and quote_ident(s.srvname) = '{0}'
-            '''.format(p_server))
+            """.format(
+                    p_server
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 select current_database() as "Database",
                        u.oid as "OID",
                        r.rolname as "User",
@@ -8254,10 +10189,15 @@ FROM #table_name#
                 on r.oid = u.umuser
                 where quote_ident(s.srvname) = '{0}'
                   and quote_ident(r.rolname) = '{1}'
-            '''.format(p_server, p_object))
+            """.format(
+                    p_server, p_object
+                )
+            )
+
     @lock_required
     def GetPropertiesForeignServer(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    s.srvname as "Name",
                    s.oid as "OID",
@@ -8272,10 +10212,15 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = s.srvowner
             where quote_ident(s.srvname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesForeignDataWrapper(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    w.fdwname as "Name",
                    w.oid as "OID",
@@ -8291,10 +10236,15 @@ FROM #table_name#
             left join pg_proc v
             on v.oid = w.fdwvalidator
             where quote_ident(w.fdwname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetPropertiesType(self, p_schema, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select current_database() as "Database",
                    n.nspname as "Schema",
                    t.typname as "Internal Type Name",
@@ -8392,12 +10342,16 @@ FROM #table_name#
             left join pg_collation coll on coll.oid = t.typcollation
             where quote_ident(n.nspname) = '{0}'
               and quote_ident(t.typname) = '{1}'
-        '''.format(p_schema, p_object))
+        """.format(
+                p_schema, p_object
+            )
+        )
 
     @lock_required
     def GetPropertiesPublication(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return self.v_connection.Query('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return self.v_connection.Query(
+                """
                 SELECT current_database() as "Database",
                        p.pubname AS "Name",
                        p.oid AS "OID",
@@ -8411,9 +10365,13 @@ FROM #table_name#
                 INNER JOIN pg_roles r
                         ON p.pubowner = r.oid
                 WHERE quote_ident(p.pubname) = '{0}'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
         else:
-            return self.v_connection.Query('''
+            return self.v_connection.Query(
+                """
                 SELECT current_database() as "Database",
                        p.pubname AS "Name",
                        p.oid AS "OID",
@@ -8428,11 +10386,15 @@ FROM #table_name#
                 INNER JOIN pg_roles r
                         ON p.pubowner = r.oid
                 WHERE quote_ident(p.pubname) = '{0}'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
 
     @lock_required
     def GetPropertiesSubscription(self, p_object):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             SELECT d.datname AS "Database",
                    s.subname AS "Name",
                    s.oid AS "OID",
@@ -8448,12 +10410,15 @@ FROM #table_name#
             INNER JOIN pg_roles r
                     ON s.subowner = r.oid
             WHERE quote_ident(s.subname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
 
     @lock_required
     def GetPropertiesStatistic(self, p_schema, p_object):
         return self.v_connection.Query(
-            '''
+            """
                 SELECT current_database() AS "Database",
                        n.nspname AS "Schema",
                        se.stxname AS "Name",
@@ -8468,94 +10433,163 @@ FROM #table_name#
                         ON se.stxowner = r.oid
                 WHERE quote_ident(n.nspname) = '{0}'
                   AND quote_ident(se.stxname) = '{1}'
-            '''.format(
-                p_schema,
-                p_object
+            """.format(
+                p_schema, p_object
             )
         )
 
     def GetProperties(self, p_schema, p_table, p_object, p_type):
         try:
-            if p_type == 'role':
-                return self.GetPropertiesRole(p_object).Transpose('Property', 'Value')
-            elif p_type == 'tablespace':
-                return self.GetPropertiesTablespace(p_object).Transpose('Property', 'Value')
-            elif p_type == 'database':
-                return self.GetPropertiesDatabase(p_object).Transpose('Property', 'Value')
-            elif p_type == 'extension':
-                return self.GetPropertiesExtension(p_object).Transpose('Property', 'Value')
-            elif p_type == 'schema':
-                return self.GetPropertiesSchema(p_object).Transpose('Property', 'Value')
-            elif p_type == 'table':
-                return self.GetPropertiesTable(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'table_field':
-                return self.GetPropertiesTableField(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'index':
-                return self.GetPropertiesIndex(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'sequence':
+            if p_type == "role":
+                return self.GetPropertiesRole(p_object).Transpose("Property", "Value")
+            elif p_type == "tablespace":
+                return self.GetPropertiesTablespace(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "database":
+                return self.GetPropertiesDatabase(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "extension":
+                return self.GetPropertiesExtension(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "schema":
+                return self.GetPropertiesSchema(p_object).Transpose("Property", "Value")
+            elif p_type == "table":
+                return self.GetPropertiesTable(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "table_field":
+                return self.GetPropertiesTableField(
+                    p_schema, p_table, p_object
+                ).Transpose("Property", "Value")
+            elif p_type == "index":
+                return self.GetPropertiesIndex(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "sequence":
                 return self.GetPropertiesSequence(p_schema, p_object)
-            elif p_type == 'view':
-                return self.GetPropertiesView(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'mview':
-                return self.GetPropertiesView(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'function':
-                return self.GetPropertiesFunction(p_object).Transpose('Property', 'Value')
-            elif p_type == 'procedure':
-                return self.GetPropertiesProcedure(p_object).Transpose('Property', 'Value')
-            elif p_type == 'trigger':
-                return self.GetPropertiesTrigger(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'eventtrigger':
-                return self.GetPropertiesEventTrigger(p_object).Transpose('Property', 'Value')
-            elif p_type == 'triggerfunction':
-                return self.GetPropertiesFunction(p_object).Transpose('Property', 'Value')
-            elif p_type == 'direct_triggerfunction':
-                return self.GetPropertiesFunction(p_object).Transpose('Property', 'Value')
-            elif p_type == 'eventtriggerfunction':
-                return self.GetPropertiesFunction(p_object).Transpose('Property', 'Value')
-            elif p_type == 'direct_eventtriggerfunction':
-                return self.GetPropertiesFunction(p_object).Transpose('Property', 'Value')
-            elif p_type == 'aggregate':
-                return self.GetPropertiesAggregate(p_object).Transpose('Property', 'Value')
-            elif p_type == 'pk':
-                return self.GetPropertiesPK(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'foreign_key':
-                return self.GetPropertiesFK(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'unique':
-                return self.GetPropertiesUnique(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'check':
-                return self.GetPropertiesCheck(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'exclude':
-                return self.GetPropertiesExclude(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'rule':
-                return self.GetPropertiesRule(p_schema, p_table, p_object).Transpose('Property', 'Value')
-            elif p_type == 'foreign_table':
-                return self.GetPropertiesForeignTable(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'user_mapping':
-                return self.GetPropertiesUserMapping(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'foreign_server':
-                return self.GetPropertiesForeignServer(p_object).Transpose('Property', 'Value')
-            elif p_type == 'fdw':
-                return self.GetPropertiesForeignDataWrapper(p_object).Transpose('Property', 'Value')
-            elif p_type == 'type':
-                return self.GetPropertiesType(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'domain':
-                return self.GetPropertiesType(p_schema, p_object).Transpose('Property', 'Value')
-            elif p_type == 'publication':
-                return self.GetPropertiesPublication(p_object).Transpose('Property', 'Value')
-            elif p_type == 'subscription':
-                return self.GetPropertiesSubscription(p_object).Transpose('Property', 'Value')
-            elif p_type == 'statistic':
-                return self.GetPropertiesStatistic(p_schema, p_object).Transpose('Property', 'Value')
+            elif p_type == "view":
+                return self.GetPropertiesView(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "mview":
+                return self.GetPropertiesView(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "function":
+                return self.GetPropertiesFunction(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "procedure":
+                return self.GetPropertiesProcedure(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "trigger":
+                return self.GetPropertiesTrigger(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "eventtrigger":
+                return self.GetPropertiesEventTrigger(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "triggerfunction":
+                return self.GetPropertiesFunction(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "direct_triggerfunction":
+                return self.GetPropertiesFunction(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "eventtriggerfunction":
+                return self.GetPropertiesFunction(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "direct_eventtriggerfunction":
+                return self.GetPropertiesFunction(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "aggregate":
+                return self.GetPropertiesAggregate(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "pk":
+                return self.GetPropertiesPK(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "foreign_key":
+                return self.GetPropertiesFK(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "unique":
+                return self.GetPropertiesUnique(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "check":
+                return self.GetPropertiesCheck(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "exclude":
+                return self.GetPropertiesExclude(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "rule":
+                return self.GetPropertiesRule(p_schema, p_table, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "foreign_table":
+                return self.GetPropertiesForeignTable(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "user_mapping":
+                return self.GetPropertiesUserMapping(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "foreign_server":
+                return self.GetPropertiesForeignServer(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "fdw":
+                return self.GetPropertiesForeignDataWrapper(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "type":
+                return self.GetPropertiesType(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "domain":
+                return self.GetPropertiesType(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "publication":
+                return self.GetPropertiesPublication(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "subscription":
+                return self.GetPropertiesSubscription(p_object).Transpose(
+                    "Property", "Value"
+                )
+            elif p_type == "statistic":
+                return self.GetPropertiesStatistic(p_schema, p_object).Transpose(
+                    "Property", "Value"
+                )
             else:
                 return None
-        except Spartacus.Database.Exception as exc:
-            if str(exc) == 'Can only transpose a table with a single row.':
-                raise Exception('Object {0} does not exist anymore. Please refresh the tree view.'.format(p_object))
+        except Spartacus.Database.DBException as exc:
+            if str(exc) == "Can only transpose a table with a single row.":
+                raise Exception(
+                    "Object {0} does not exist anymore. Please refresh the tree view.".format(
+                        p_object
+                    )
+                )
             else:
                 raise exc
+
     @lock_required
     def GetDDLRole(self, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             with
             q1 as (
              select
@@ -8608,10 +10642,15 @@ FROM #table_name#
              )
             select ddl||coalesce(ddl_config||E'\n','')
               from q1,q2
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetDDLTablespace(self, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select format(E'CREATE TABLESPACE %s\nLOCATION %s\nOWNER %s;%s',
                          quote_ident(t.spcname),
                          chr(39) || pg_tablespace_location(t.oid) || chr(39),
@@ -8629,11 +10668,16 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = t.spcowner
             where quote_ident(t.spcname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetDDLDatabase(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90500:
-            return self.v_connection.ExecuteScalar('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90500:
+            return self.v_connection.ExecuteScalar(
+                """
                 WITH comments AS (
                     SELECT shobj_description(oid, 'pg_database') AS comment
                     FROM pg_database
@@ -8663,9 +10707,13 @@ FROM #table_name#
                 LEFT JOIN comments c
                        ON 1 = 1
                 where quote_ident(d.datname) = '{0}'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar('''
+            return self.v_connection.ExecuteScalar(
+                """
                 WITH comments AS (
                     SELECT shobj_description(oid, 'pg_database') AS comment
                     FROM pg_database
@@ -8697,11 +10745,15 @@ FROM #table_name#
                 LEFT JOIN comments c
                        ON 1 = 1
                 where quote_ident(d.datname) = '{0}'
-            '''.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
+
     @lock_required
     def GetDDLExtension(self, p_object):
         return self.v_connection.ExecuteScalar(
-            '''
+            """
                 WITH comments AS (
                     SELECT COALESCE(obj_description(oid, 'pg_extension'), '') AS description
                     FROM pg_extension
@@ -8718,14 +10770,16 @@ FROM #table_name#
                             END)
                        ) AS sql
                 FROM comments
-            '''.format(
+            """.format(
                 p_object
             )
         )
-        return 'CREATE EXTENSION {0};'.format(p_object)
+        return "CREATE EXTENSION {0};".format(p_object)
+
     @lock_required
     def GetDDLSchema(self, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             with obj as (
                SELECT n.oid,
                      'pg_namespace'::regclass,
@@ -8809,11 +10863,16 @@ FROM #table_name#
               inner join alterowner on 1=1
               inner join grants on 1=1
              where quote_ident(n.nspname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetDDLClass(self, p_schema, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
-            return self.v_connection.ExecuteScalar('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                    SELECT c.oid,
                          'pg_class'::regclass,
@@ -9328,9 +11387,16 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM columnsgrants)
-        '''.format(p_schema, p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) >= 100000 and int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.ExecuteScalar('''
+        """.format(
+                    p_schema, p_object
+                )
+            )
+        elif (
+            int(self.v_connection.ExecuteScalar("show server_version_num")) >= 100000
+            and int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000
+        ):
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                    SELECT c.oid,
                          'pg_class'::regclass,
@@ -9876,9 +11942,16 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM columnsgrants)
-            '''.format(p_schema, p_object))
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) >= 110000 and int(self.v_connection.ExecuteScalar('show server_version_num')) < 120000:
-            return self.v_connection.ExecuteScalar('''
+            """.format(
+                    p_schema, p_object
+                )
+            )
+        elif (
+            int(self.v_connection.ExecuteScalar("show server_version_num")) >= 110000
+            and int(self.v_connection.ExecuteScalar("show server_version_num")) < 120000
+        ):
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                    SELECT c.oid,
                          'pg_class'::regclass,
@@ -10424,9 +12497,13 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM columnsgrants)
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar('''
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                    SELECT c.oid,
                          'pg_class'::regclass,
@@ -10973,10 +13050,15 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM columnsgrants)
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
+
     @lock_required
     def GetDDLTrigger(self, p_trigger, p_table, p_schema):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select 'CREATE TRIGGER ' || x.trigger_name || chr(10) ||
                    '  ' || x.action_timing || ' ' || x.event_manipulation || (CASE WHEN x.columns IS NOT NULL THEN ' OF ' || x.columns ELSE '' END) || chr(10) ||
                    '  ON {0}.{1}' || chr(10) ||
@@ -11034,10 +13116,15 @@ FROM #table_name#
               and quote_ident(t.event_object_table) = '{1}'
               and quote_ident(t.trigger_name) = '{2}'
             ) x
-        '''.format(p_schema, p_table, p_trigger))
+        """.format(
+                p_schema, p_table, p_trigger
+            )
+        )
+
     @lock_required
     def GetDDLEventTrigger(self, p_trigger):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             select format(E'CREATE EVENT TRIGGER %s\n  ON %s%s\n  EXECUTE PROCEDURE %s;\n\nALTER EVENT TRIGGER %s OWNER TO %s;\n%s',
                      quote_ident(t.evtname),
                      t.evtevent,
@@ -11065,11 +13152,16 @@ FROM #table_name#
             inner join pg_roles r
             on r.oid = t.evtowner
             where quote_ident(t.evtname) = '{0}'
-        '''.format(p_trigger))
+        """.format(
+                p_trigger
+            )
+        )
+
     @lock_required
     def GetDDLFunction(self, p_function):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
-            return self.v_connection.ExecuteScalar('''
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                     SELECT p.oid,
                            p.proname AS name,
@@ -11159,9 +13251,13 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM comment_on)
-            '''.format(p_function))
+            """.format(
+                    p_function
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar('''
+            return self.v_connection.ExecuteScalar(
+                """
                 with obj as (
                     SELECT p.oid,
                            p.proname AS name,
@@ -11251,10 +13347,15 @@ FROM #table_name#
                        (select text from alterowner) ||
                        (select text from grants) ||
                        (SELECT text FROM comment_on)
-        '''.format(p_function))
+        """.format(
+                    p_function
+                )
+            )
+
     @lock_required
     def GetDDLProcedure(self, p_procedure):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             with obj as (
                 SELECT p.oid,
                        p.proname AS name,
@@ -11344,10 +13445,15 @@ FROM #table_name#
                    (select text from alterowner) ||
                    (select text from grants) ||
                    (SELECT text FROM comment_on)
-        '''.format(p_procedure))
+        """.format(
+                p_procedure
+            )
+        )
+
     @lock_required
     def GetDDLConstraint(self, p_schema, p_table, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             with cs as (
               select
                'ALTER TABLE ' || text(regclass(c.conrelid)) ||
@@ -11391,11 +13497,16 @@ FROM #table_name#
                    ON 1 = 1
             GROUP BY cs.sql,
                      c.sql
-        '''.format(p_schema, p_table, p_object))
+        """.format(
+                p_schema, p_table, p_object
+            )
+        )
+
     @lock_required
     def GetDDLUserMapping(self, p_server, p_object):
-        if p_object == 'PUBLIC':
-            return self.v_connection.ExecuteScalar('''
+        if p_object == "PUBLIC":
+            return self.v_connection.ExecuteScalar(
+                """
                 select format(E'CREATE USER MAPPING FOR PUBLIC\n  SERVER %s%s;\n',
                          quote_ident(s.srvname),
                          (select (case when s is not null and s <> ''
@@ -11419,9 +13530,13 @@ FROM #table_name#
                 on s.oid = u.umserver
                 where u.umuser = 0
                   and quote_ident(s.srvname) = '{0}'
-            '''.format(p_server))
+            """.format(
+                    p_server
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar('''
+            return self.v_connection.ExecuteScalar(
+                """
                 select format(E'CREATE USER MAPPING FOR %s\n  SERVER %s%s;\n',
                          quote_ident(r.rolname),
                          quote_ident(s.srvname),
@@ -11450,10 +13565,15 @@ FROM #table_name#
                 on r.oid = u.umuser
                 where quote_ident(s.srvname) = '{0}'
                   and quote_ident(r.rolname) = '{1}'
-            '''.format(p_server, p_object))
+            """.format(
+                    p_server, p_object
+                )
+            )
+
     @lock_required
     def GetDDLForeignServer(self, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             WITH privileges AS (
                 SELECT (u_grantor.rolname)::information_schema.sql_identifier AS grantor,
                        (grantee.rolname)::information_schema.sql_identifier AS grantee,
@@ -11569,10 +13689,15 @@ FROM #table_name#
             on r.oid = s.srvowner
             inner join grants g on 1=1
             where quote_ident(s.srvname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetDDLForeignDataWrapper(self, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             WITH privileges AS (
                 SELECT (u_grantor.rolname)::information_schema.sql_identifier AS grantor,
                        (grantee.rolname)::information_schema.sql_identifier AS grantee,
@@ -11685,21 +13810,30 @@ FROM #table_name#
             on r.oid = w.fdwowner
             inner join grants g on 1=1
             where quote_ident(w.fdwname) = '{0}'
-        '''.format(p_object))
+        """.format(
+                p_object
+            )
+        )
+
     @lock_required
     def GetDDLType(self, p_schema, p_object):
-        v_type = self.v_connection.ExecuteScalar('''
+        v_type = self.v_connection.ExecuteScalar(
+            """
             select t.typtype
             from pg_type t
             inner join pg_namespace n
             on n.oid = t.typnamespace
             where quote_ident(n.nspname) = '{0}'
               and quote_ident(t.typname) = '{1}'
-        '''.format(p_schema, p_object))
-        if v_type == 'c':
+        """.format(
+                p_schema, p_object
+            )
+        )
+        if v_type == "c":
             return self.GetDDLClass(p_schema, p_object)
-        elif v_type == 'e':
-            return self.v_connection.ExecuteScalar('''
+        elif v_type == "e":
+            return self.v_connection.ExecuteScalar(
+                """
                 select format(
                            E'CREATE TYPE %s.%s AS ENUM (\n%s\n);\n\nALTER TYPE %s.%s OWNER TO %s;\n%s',
                            quote_ident(n.nspname),
@@ -11727,9 +13861,13 @@ FROM #table_name#
                          t.typname,
                          r.rolname,
                          t.oid
-            '''.format(p_schema, p_object))
-        elif v_type == 'r':
-            return self.v_connection.ExecuteScalar('''
+            """.format(
+                    p_schema, p_object
+                )
+            )
+        elif v_type == "r":
+            return self.v_connection.ExecuteScalar(
+                """
                 select format(
                          E'CREATE TYPE %s.%s AS RANGE (\n  SUBTYPE = %s.%s\n%s%s%s%s);\n\nALTER TYPE %s.%s OWNER TO %s;\n%s',
                          quote_ident(n.nspname),
@@ -11766,9 +13904,13 @@ FROM #table_name#
                 inner join pg_roles ro on ro.oid = t.typowner
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(t.typname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar('''
+            return self.v_connection.ExecuteScalar(
+                """
                 select format(
                          E'CREATE TYPE %s (\n  INPUT = %s,\n  , OUTPUT = %s\n%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s);\n\nALTER TYPE %s OWNER TO %s;\n%s',
                          quote_ident(n.nspname) || '.' || quote_ident(t.typname),
@@ -11833,10 +13975,15 @@ FROM #table_name#
                 left join pg_collation coll on coll.oid = t.typcollation
                 where quote_ident(n.nspname) = '{0}'
                   and quote_ident(t.typname) = '{1}'
-            '''.format(p_schema, p_object))
+            """.format(
+                    p_schema, p_object
+                )
+            )
+
     @lock_required
     def GetDDLDomain(self, p_schema, p_object):
-        return self.v_connection.ExecuteScalar('''
+        return self.v_connection.ExecuteScalar(
+            """
             with domain as (
                 select t.oid,
                        quote_ident(n.nspname) || '.' || quote_ident(t.typname) as name,
@@ -11894,12 +14041,16 @@ FROM #table_name#
                      (select sql from alter_domain),
                      (SELECT sql FROM comment_on)
                    )
-        '''.format(p_schema, p_object))
+        """.format(
+                p_schema, p_object
+            )
+        )
 
     @lock_required
     def GetDDLPublication(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
-            return self.v_connection.ExecuteScalar("""
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
+            return self.v_connection.ExecuteScalar(
+                """
                 WITH publication AS (
                     SELECT oid,
                            pubname,
@@ -11998,9 +14149,13 @@ FROM #table_name#
                         ON 1 = 1
                 INNER JOIN comment_on c
                         ON 1 = 1
-            """.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
         else:
-            return self.v_connection.ExecuteScalar("""
+            return self.v_connection.ExecuteScalar(
+                """
                 WITH publication AS (
                     SELECT oid,
                            pubname,
@@ -12105,11 +14260,15 @@ FROM #table_name#
                         ON 1 = 1
                 INNER JOIN comment_on c
                         ON 1 = 1
-            """.format(p_object))
+            """.format(
+                    p_object
+                )
+            )
 
     @lock_required
     def GetDDLSubscription(self, p_object):
-        return self.v_connection.ExecuteScalar("""
+        return self.v_connection.ExecuteScalar(
+            """
             WITH subscription AS (
                 SELECT oid,
                        subname,
@@ -12171,7 +14330,10 @@ FROM #table_name#
                     ON 1 = 1
             INNER JOIN comment_on c
                     ON 1 = 1
-        """.format(p_object))
+        """.format(
+                p_object
+            )
+        )
 
     @lock_required
     def GetDDLStatistic(self, p_schema, p_object):
@@ -12283,16 +14445,15 @@ FROM #table_name#
                 INNER JOIN comment_on c
                         ON 1 = 1
             """.format(
-                p_schema,
-                p_object
+                p_schema, p_object
             )
         )
 
     @lock_required
     def GetDDLAggregate(self, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 90600:
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 90600:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -12481,13 +14642,13 @@ FROM #table_name#
                            ON 1 = 1
                     WHERE p1.is_aggregate
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 110000:
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 110000:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -12705,13 +14866,13 @@ FROM #table_name#
                            ON 1 = 1
                     WHERE p1.is_aggregate
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
         else:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH procs AS (
                         SELECT p.oid AS function_oid,
                                quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || oidvectortypes(p.proargtypes) || ')' AS function_id,
@@ -12949,16 +15110,16 @@ FROM #table_name#
                            ON 1 = 1
                     WHERE p1.function_kind = 'a'
                       AND p1.function_id = '{0}'
-                '''.format(
+                """.format(
                     p_object
                 )
             )
 
     @lock_required
     def GetDDLTableField(self, p_schema, p_table, p_object):
-        if int(self.v_connection.ExecuteScalar('show server_version_num')) < 100000:
+        if int(self.v_connection.ExecuteScalar("show server_version_num")) < 100000:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH columns AS (
                         SELECT format(
                                    '%I %s%s%s',
@@ -13073,15 +15234,13 @@ FROM #table_name#
                            ON 1 = 1
                     LEFT JOIN columnsgrants cg
                            ON 1 = 1
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
-        elif int(self.v_connection.ExecuteScalar('show server_version_num')) < 130000:
+        elif int(self.v_connection.ExecuteScalar("show server_version_num")) < 130000:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH columns AS (
                         SELECT format(
                                    '%I %s%s%s%s',
@@ -13202,15 +15361,13 @@ FROM #table_name#
                            ON 1 = 1
                     LEFT JOIN columnsgrants cg
                            ON 1 = 1
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
         else:
             return self.v_connection.ExecuteScalar(
-                '''
+                """
                     WITH columns AS (
                         SELECT format(
                                    '%I %s%s%s%s',
@@ -13335,90 +15492,89 @@ FROM #table_name#
                            ON 1 = 1
                     LEFT JOIN columnsgrants cg
                            ON 1 = 1
-                '''.format(
-                    p_schema,
-                    p_table,
-                    p_object
+                """.format(
+                    p_schema, p_table, p_object
                 )
             )
 
     def GetDDL(self, p_schema, p_table, p_object, p_type):
-        if p_type == 'role':
+        if p_type == "role":
             return self.GetDDLRole(p_object)
-        elif p_type == 'tablespace':
+        elif p_type == "tablespace":
             return self.GetDDLTablespace(p_object)
-        elif p_type == 'database':
+        elif p_type == "database":
             return self.GetDDLDatabase(p_object)
-        elif p_type == 'extension':
+        elif p_type == "extension":
             return self.GetDDLExtension(p_object)
-        elif p_type == 'schema':
+        elif p_type == "schema":
             return self.GetDDLSchema(p_object)
-        elif p_type == 'table':
+        elif p_type == "table":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'table_field':
+        elif p_type == "table_field":
             return self.GetDDLTableField(p_schema, p_table, p_object)
-        elif p_type == 'index':
+        elif p_type == "index":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'sequence':
+        elif p_type == "sequence":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'view':
+        elif p_type == "view":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'mview':
+        elif p_type == "mview":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'function':
+        elif p_type == "function":
             return self.GetDDLFunction(p_object)
-        elif p_type == 'procedure':
+        elif p_type == "procedure":
             return self.GetDDLProcedure(p_object)
-        elif p_type == 'trigger':
+        elif p_type == "trigger":
             return self.GetDDLTrigger(p_object, p_table, p_schema)
-        elif p_type == 'eventtrigger':
+        elif p_type == "eventtrigger":
             return self.GetDDLEventTrigger(p_object)
-        elif p_type == 'triggerfunction':
+        elif p_type == "triggerfunction":
             return self.GetDDLFunction(p_object)
-        elif p_type == 'direct_triggerfunction':
+        elif p_type == "direct_triggerfunction":
             return self.GetDDLFunction(p_object)
-        elif p_type == 'eventtriggerfunction':
+        elif p_type == "eventtriggerfunction":
             return self.GetDDLFunction(p_object)
-        elif p_type == 'direct_eventtriggerfunction':
+        elif p_type == "direct_eventtriggerfunction":
             return self.GetDDLFunction(p_object)
-        elif p_type == 'pk':
+        elif p_type == "pk":
             return self.GetDDLConstraint(p_schema, p_table, p_object)
-        elif p_type == 'foreign_key':
+        elif p_type == "foreign_key":
             return self.GetDDLConstraint(p_schema, p_table, p_object)
-        elif p_type == 'unique':
+        elif p_type == "unique":
             return self.GetDDLConstraint(p_schema, p_table, p_object)
-        elif p_type == 'check':
+        elif p_type == "check":
             return self.GetDDLConstraint(p_schema, p_table, p_object)
-        elif p_type == 'exclude':
+        elif p_type == "exclude":
             return self.GetDDLConstraint(p_schema, p_table, p_object)
-        elif p_type == 'rule':
+        elif p_type == "rule":
             return self.GetRuleDefinition(p_object, p_table, p_schema)
-        elif p_type == 'foreign_table':
+        elif p_type == "foreign_table":
             return self.GetDDLClass(p_schema, p_object)
-        elif p_type == 'user_mapping':
+        elif p_type == "user_mapping":
             return self.GetDDLUserMapping(p_schema, p_object)
-        elif p_type == 'foreign_server':
+        elif p_type == "foreign_server":
             return self.GetDDLForeignServer(p_object)
-        elif p_type == 'fdw':
+        elif p_type == "fdw":
             return self.GetDDLForeignDataWrapper(p_object)
-        elif p_type == 'type':
+        elif p_type == "type":
             return self.GetDDLType(p_schema, p_object)
-        elif p_type == 'domain':
+        elif p_type == "domain":
             return self.GetDDLDomain(p_schema, p_object)
-        elif p_type == 'publication':
+        elif p_type == "publication":
             return self.GetDDLPublication(p_object)
-        elif p_type == 'subscription':
+        elif p_type == "subscription":
             return self.GetDDLSubscription(p_object)
-        elif p_type == 'statistic':
+        elif p_type == "statistic":
             return self.GetDDLStatistic(p_schema, p_object)
-        elif p_type == 'aggregate':
+        elif p_type == "aggregate":
             return self.GetDDLAggregate(p_object)
         else:
-            return ''
+            return ""
 
     @lock_required
     def GetAutocompleteValues(self, p_columns, p_filter):
-        return self.v_connection.Query('''
+        return self.v_connection.Query(
+            """
             select {0}
             from (
             (select *
@@ -13563,42 +15719,47 @@ FROM #table_name#
             LIMIT 500 )) search
             {1}
             order by sequence,result_complete
-        '''.format(p_columns,p_filter), True)
+        """.format(
+                p_columns, p_filter
+            ),
+            True,
+        )
 
     @lock_required
     def ChangeRolePassword(self, p_role, p_password):
         self.v_connection.Execute(
-            '''
+            """
                 ALTER ROLE {0}
                     WITH PASSWORD '{1}'
-            '''.format(
+            """.format(
                 p_role,
-                'md5{0}'.format(
-                    hashlib.md5(p_password.encode('utf-8') + p_role.encode('utf-8')).hexdigest()
-                )
+                "md5{0}".format(
+                    hashlib.md5(
+                        p_password.encode("utf-8") + p_role.encode("utf-8")
+                    ).hexdigest()
+                ),
             )
         )
 
     @lock_required
     def GetObjectDescriptionAggregate(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regprocedure AS id,
                        coalesce(obj_description({0}, 'pg_proc'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON AGGREGATE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionTableField(self, p_oid, p_position):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT format(
                            '%s.%s',
                            {0}::regclass,
@@ -13608,261 +15769,240 @@ FROM #table_name#
                 FROM pg_attribute
                 WHERE attrelid = {0}::regclass
                   AND attnum = {1}
-            '''.format(
-                p_oid,
-                p_position
+            """.format(
+                p_oid, p_position
             )
         ).Rows[0]
 
         return "COMMENT ON COLUMN {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionConstraint(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT conname AS id,
                        conrelid::regclass AS table_id,
                        coalesce(obj_description({0}, 'pg_constraint'), '') AS description
                 FROM pg_constraint c
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON CONSTRAINT {0} ON {1} is '{2}'".format(
-            v_row['id'],
-            v_row['table_id'],
-            v_row['description']
+            v_row["id"], v_row["table_id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionDatabase(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(datname) AS id,
                        coalesce(shobj_description({0}, 'pg_database'), '') AS description
                 FROM pg_database
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON DATABASE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionDomain(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT '{0}'::regtype AS id,
                        coalesce(obj_description({0}, 'pg_type'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON DOMAIN {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionExtension(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(extname) AS id,
                        coalesce(obj_description({0}, 'pg_extension'), '') AS description
                 FROM pg_extension
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON EXTENSION {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionEventTrigger(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(evtname) AS id,
                        coalesce(obj_description({0}, 'pg_event_trigger'), '') AS description
                 FROM pg_event_trigger
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON EVENT TRIGGER {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionForeignDataWrapper(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(fdwname) AS id,
                        coalesce(obj_description({0}, 'pg_foreign_data_wrapper'), '') AS description
                 FROM pg_foreign_data_wrapper
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON FOREIGN DATA WRAPPER {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionForeignServer(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(srvname) AS id,
                        coalesce(obj_description({0}, 'pg_foreign_server'), '') AS description
                 FROM pg_foreign_server
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON SERVER {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionForeignTable(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON FOREIGN TABLE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionFunction(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regprocedure AS id,
                        coalesce(obj_description({0}, 'pg_proc'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON FUNCTION {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionIndex(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
-        return "COMMENT ON INDEX {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
-        )
+        return "COMMENT ON INDEX {0} is '{1}'".format(v_row["id"], v_row["description"])
 
     @lock_required
     def GetObjectDescriptionMaterializedView(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON MATERIALIZED VIEW {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionProcedure(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regprocedure AS id,
                        coalesce(obj_description({0}, 'pg_proc'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON PROCEDURE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionPublication(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(pubname) AS id,
                        coalesce(obj_description({0}, 'pg_publication'), '') AS description
                 FROM pg_publication
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON PUBLICATION {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionRole(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regrole AS id,
                        coalesce(shobj_description({0}, 'pg_roles'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
-        return "COMMENT ON ROLE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
-        )
+        return "COMMENT ON ROLE {0} is '{1}'".format(v_row["id"], v_row["description"])
 
     @lock_required
     def GetObjectDescriptionRule(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(r.rulename) AS id,
                        format('%s.%s', r.schemaname, r.tablename)::regclass AS table_id,
                        coalesce(obj_description({0}, 'pg_rewrite'), '') AS description
@@ -13870,224 +16010,212 @@ FROM #table_name#
                 INNER JOIN pg_rewrite rw
                         ON r.rulename = rw.rulename
                 WHERE rw.oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON RULE {0} ON {1} is '{2}'".format(
-            v_row['id'],
-            v_row['table_id'],
-            v_row['description']
+            v_row["id"], v_row["table_id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionSchema(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regnamespace AS id,
                        coalesce(obj_description({0}, 'pg_namespace'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON SCHEMA {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionSequence(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON SEQUENCE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionStatistic(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT format('%s.%s', quote_ident(stxnamespace::regnamespace::text), quote_ident(stxname)) AS id,
                        coalesce(obj_description({0}, 'pg_statistic_ext'), '') AS description
                 FROM pg_statistic_ext
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON STATISTICS {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionSubscription(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(subname) AS id,
                        coalesce(obj_description({0}, 'pg_subscription'), '') AS description
                 FROM pg_subscription
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON SUBSCRIPTION {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionTable(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
-        return "COMMENT ON TABLE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
-        )
+        return "COMMENT ON TABLE {0} is '{1}'".format(v_row["id"], v_row["description"])
 
     @lock_required
     def GetObjectDescriptionTablespace(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT quote_ident(spcname) AS id,
                        coalesce(shobj_description({0}, 'pg_tablespace'), '') AS description
                 FROM pg_tablespace
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON TABLESPACE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
+            v_row["id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionTrigger(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT tgname AS id,
                        tgrelid::regclass AS table_id,
                        coalesce(obj_description({0}, 'pg_trigger'), '') AS description
                 FROM pg_trigger
                 WHERE oid = {0}
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
         return "COMMENT ON TRIGGER {0} ON {1} is '{2}'".format(
-            v_row['id'],
-            v_row['table_id'],
-            v_row['description']
+            v_row["id"], v_row["table_id"], v_row["description"]
         )
 
     @lock_required
     def GetObjectDescriptionType(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT '{0}'::regtype AS id,
                        coalesce(obj_description({0}, 'pg_type'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
-        return "COMMENT ON TYPE {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
-        )
+        return "COMMENT ON TYPE {0} is '{1}'".format(v_row["id"], v_row["description"])
 
     @lock_required
     def GetObjectDescriptionView(self, p_oid):
         v_row = self.v_connection.Query(
-            '''
+            """
                 SELECT {0}::regclass AS id,
                        coalesce(obj_description({0}, 'pg_class'), '') AS description
-            '''.format(
+            """.format(
                 p_oid
             )
         ).Rows[0]
 
-        return "COMMENT ON VIEW {0} is '{1}'".format(
-            v_row['id'],
-            v_row['description']
-        )
+        return "COMMENT ON VIEW {0} is '{1}'".format(v_row["id"], v_row["description"])
 
     def GetObjectDescription(self, p_type, p_oid, p_position):
         print(p_type, p_oid, p_position)
-        if p_type == 'aggregate':
+        if p_type == "aggregate":
             return self.GetObjectDescriptionAggregate(p_oid)
-        elif p_type == 'table_field':
+        elif p_type == "table_field":
             return self.GetObjectDescriptionTableField(p_oid, p_position)
-        elif p_type in ['check', 'foreign_key', 'pk', 'unique', 'exclude']:
+        elif p_type in ["check", "foreign_key", "pk", "unique", "exclude"]:
             return self.GetObjectDescriptionConstraint(p_oid)
-        elif p_type == 'database':
+        elif p_type == "database":
             return self.GetObjectDescriptionDatabase(p_oid)
-        elif p_type == 'domain':
+        elif p_type == "domain":
             return self.GetObjectDescriptionDomain(p_oid)
-        elif p_type == 'extension':
+        elif p_type == "extension":
             return self.GetObjectDescriptionExtension(p_oid)
-        elif p_type == 'eventtrigger':
+        elif p_type == "eventtrigger":
             return self.GetObjectDescriptionEventTrigger(p_oid)
-        elif p_type == 'fdw':
+        elif p_type == "fdw":
             return self.GetObjectDescriptionForeignDataWrapper(p_oid)
-        elif p_type == 'foreign_server':
+        elif p_type == "foreign_server":
             return self.GetObjectDescriptionForeignServer(p_oid)
-        elif p_type == 'foreign_table':
+        elif p_type == "foreign_table":
             return self.GetObjectDescriptionForeignTable(p_oid)
-        elif p_type in ['function', 'triggerfunction', 'direct_triggerfunction', 'eventtriggerfunction', 'direct_eventtriggerfunction']:
+        elif p_type in [
+            "function",
+            "triggerfunction",
+            "direct_triggerfunction",
+            "eventtriggerfunction",
+            "direct_eventtriggerfunction",
+        ]:
             return self.GetObjectDescriptionFunction(p_oid)
-        elif p_type == 'index':
+        elif p_type == "index":
             return self.GetObjectDescriptionIndex(p_oid)
-        elif p_type == 'mview':
+        elif p_type == "mview":
             return self.GetObjectDescriptionMaterializedView(p_oid)
-        elif p_type == 'procedure':
+        elif p_type == "procedure":
             return self.GetObjectDescriptionProcedure(p_oid)
-        elif p_type == 'publication':
+        elif p_type == "publication":
             return self.GetObjectDescriptionPublication(p_oid)
-        elif p_type == 'role':
+        elif p_type == "role":
             return self.GetObjectDescriptionRole(p_oid)
-        elif p_type == 'rule':
+        elif p_type == "rule":
             return self.GetObjectDescriptionRule(p_oid)
-        elif p_type == 'schema':
+        elif p_type == "schema":
             return self.GetObjectDescriptionSchema(p_oid)
-        elif p_type == 'sequence':
+        elif p_type == "sequence":
             return self.GetObjectDescriptionSequence(p_oid)
-        elif p_type == 'statistic':
+        elif p_type == "statistic":
             return self.GetObjectDescriptionStatistic(p_oid)
-        elif p_type == 'subscription':
+        elif p_type == "subscription":
             return self.GetObjectDescriptionSubscription(p_oid)
-        elif p_type == 'table':
+        elif p_type == "table":
             return self.GetObjectDescriptionTable(p_oid)
-        elif p_type == 'tablespace':
+        elif p_type == "tablespace":
             return self.GetObjectDescriptionTablespace(p_oid)
-        elif p_type == 'trigger':
+        elif p_type == "trigger":
             return self.GetObjectDescriptionTrigger(p_oid)
-        elif p_type == 'type':
+        elif p_type == "type":
             return self.GetObjectDescriptionType(p_oid)
-        elif p_type == 'view':
+        elif p_type == "view":
             return self.GetObjectDescriptionView(p_oid)
         else:
-            return ''
+            return ""

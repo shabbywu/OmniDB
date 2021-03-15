@@ -88,7 +88,7 @@ async function clear_client() {
  	var csrftoken = getCookie('omnidb_csrftoken');
 	// Requesting data with ajax.
  	const v_ajax_call = await $.ajax({
- 		url: v_url_folder + '/clear_client',
+ 		url: v_url_folder + '/clear_client' + location.search,
  		data: null,
  		type: "get",
  		dataType: "json",
