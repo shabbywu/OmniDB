@@ -7,16 +7,14 @@ from starlette import status
 from starlette.responses import RedirectResponse
 from fastapi import Depends, HTTPException
 from OmniDB import settings
-from OmniDB_app.include.Session import Session
 from OmniDB_app.models import Connection, Technology
 from OmniDB_app.views.fastapi import app, dependencies, schemas
-from django.contrib.auth import get_user_model
 from OmniDB_app.include import OmniDatabase
 from fastapi.security import OAuth2PasswordRequestForm
 from contextlib import contextmanager
+from OmniDB_app.backends import backend
 
 
-UserModel = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -74,16 +72,8 @@ def sign_in_with_database(
     v_return=Depends(dependencies.get_default_return),
     sys_user=Depends(dependencies.get_sys_api_caller),
 ):
-    try:
-        user = UserModel.objects.get(username=payload.username)
-    except UserModel.DoesNotExist:
-        user = UserModel.objects.create_user(
-            username=payload.username,
-            password=payload.username,
-            email=f"{payload.username}@zhiyi.com",
-            is_staff=True,
-        )
-
+    # TODO: replace with RemoteUserBackend
+    user = backend.authenticate(request, remote_user=payload.username)
     login(request, user)
 
     with contextmanager(dependencies.get_or_create_omnidb_session)(
