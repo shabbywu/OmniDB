@@ -1091,7 +1091,7 @@ class SQLite(Generic):
         pass
 
     @transfer_exception
-    @ensure_v_con
+    @ensure_v_con()
     def GetFields(self, p_sql):
         v_fields = []
         self.v_cur.execute("select * from ( " + p_sql + " ) t limit 1")
@@ -1581,7 +1581,7 @@ class PostgreSQL(Generic):
         self.v_con.notices = DataList()
 
     @transfer_exception
-    @ensure_v_con
+    @ensure_v_con()
     def Query(self, p_sql, p_alltypesstr=False, p_simple=False):
         self.v_cur.execute(p_sql)
         v_table = DataTable()
@@ -1599,12 +1599,12 @@ class PostgreSQL(Generic):
         return v_table
 
     @transfer_exception
-    @ensure_v_con
+    @ensure_v_con()
     def Execute(self, p_sql):
         return self.v_cur.execute(p_sql)
 
     @transfer_exception
-    @ensure_v_con
+    @ensure_v_con()
     def ExecuteScalar(self, p_sql):
         self.v_cur.execute(p_sql)
         r = self.v_cur.fetchone()
@@ -1671,7 +1671,7 @@ class PostgreSQL(Generic):
         self.Execute("select pg_terminate_backend({0})".format(p_pid))
 
     @transfer_exception
-    @ensure_v_con
+    @ensure_v_con()
     def GetFields(self, p_sql):
         v_fields = []
         self.v_cur.execute("select * from ( " + p_sql + " ) t limit 1")

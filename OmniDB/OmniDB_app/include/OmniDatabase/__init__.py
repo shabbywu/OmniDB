@@ -1,4 +1,4 @@
-'''
+"""
 The MIT License (MIT)
 
 Portions Copyright (c) 2015-2019, The OmniDB Team
@@ -21,7 +21,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 from OmniDB_app.include.OmniDatabase.SQLite import SQLite
 from OmniDB_app.include.OmniDatabase.PostgreSQL import PostgreSQL
@@ -29,33 +29,78 @@ from OmniDB_app.include.OmniDatabase.Oracle import Oracle
 from OmniDB_app.include.OmniDatabase.MariaDB import MariaDB
 from OmniDB_app.include.OmniDatabase.MySQL import MySQL
 
-'''
+"""
 ------------------------------------------------------------------------
 Generic
 ------------------------------------------------------------------------
-'''
+"""
+
+
 class Generic(object):
     @staticmethod
-    def InstantiateDatabase(p_db_type,
-                            p_server,
-                            p_port,
-                            p_service,
-                            p_user,
-                            p_password,
-                            p_conn_id=0,
-                            p_alias='',
-                            p_foreignkeys=True,
-                            p_application_name='OmniDB',
-                            p_conn_string='',
-                            p_parse_conn_string = False):
+    def InstantiateDatabase(
+        p_db_type,
+        p_server,
+        p_port,
+        p_service,
+        p_user,
+        p_password,
+        p_conn_id=0,
+        p_alias="",
+        p_foreignkeys=True,
+        p_application_name="OmniDB",
+        p_conn_string="",
+        p_parse_conn_string=False,
+    ):
 
-        if p_db_type == 'postgresql':
-            return PostgreSQL(p_server, p_port, p_service, p_user, p_password, p_conn_id, p_alias, p_application_name, p_conn_string, p_parse_conn_string)
-        if p_db_type == 'oracle':
-            return Oracle(p_server, p_port, p_service, p_user, p_password, p_conn_id, p_alias, p_conn_string, p_parse_conn_string)
-        if p_db_type == 'mariadb':
-            return MariaDB(p_server, p_port, p_service, p_user, p_password, p_conn_id, p_alias, p_conn_string, p_parse_conn_string)
-        if p_db_type == 'mysql':
-            return MySQL(p_server, p_port, p_service, p_user, p_password, p_conn_id, p_alias, p_conn_string, p_parse_conn_string)
-        if p_db_type == 'sqlite':
+        if p_db_type == "postgresql":
+            return PostgreSQL(
+                p_server,
+                p_port,
+                p_service,
+                p_user,
+                p_password,
+                p_conn_id,
+                p_alias,
+                p_application_name,
+                p_conn_string,
+                p_parse_conn_string,
+            )
+        if p_db_type == "oracle":
+            return Oracle(
+                p_server,
+                p_port,
+                p_service,
+                p_user,
+                p_password,
+                p_conn_id,
+                p_alias,
+                p_conn_string,
+                p_parse_conn_string,
+            )
+        if p_db_type == "mariadb":
+            return MariaDB(
+                p_server,
+                p_port,
+                p_service,
+                p_user,
+                p_password,
+                p_conn_id,
+                p_alias,
+                p_conn_string,
+                p_parse_conn_string,
+            )
+        if p_db_type == "mysql":
+            return MySQL(
+                p_server,
+                p_port,
+                p_service,
+                p_user,
+                p_password,
+                p_conn_id,
+                p_alias,
+                p_conn_string,
+                p_parse_conn_string,
+            )
+        if p_db_type == "sqlite":
             return SQLite(p_service, p_conn_id, p_alias, p_foreignkeys)

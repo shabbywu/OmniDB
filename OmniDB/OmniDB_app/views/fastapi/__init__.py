@@ -54,4 +54,4 @@ async def dispatch_fastapi_view(request: ASGIRequest, *args, **kwargs):
     return response
 
 
-from . import login, tree_mysql, tree_postgresql, workspace  # noqa
+from . import login, tree_mysql, tree_postgresql, workspace, connections  # noqa

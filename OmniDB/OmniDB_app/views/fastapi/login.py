@@ -2,11 +2,9 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login
-from django.shortcuts import redirect
+from starlette.responses import RedirectResponse
 from fastapi import Depends
 from OmniDB import settings
-from OmniDB_app.include.Session import Session
-from OmniDB_app.models.main import *
 from OmniDB_app.views.fastapi import app, dependencies
 
 logger = logging.getLogger(__name__)
@@ -14,35 +12,10 @@ logger = logging.getLogger(__name__)
 
 @app.get("/")
 def check_session(
-    user=Depends(dependencies.get_user),
     django_session=Depends(dependencies.get_django_session),
+    v_session=Depends(dependencies.get_or_create_omnidb_session),
 ):
-    # User is authenticated, check if user details object exists.
-    try:
-        user_details = UserDetails.objects.get(user=user)
-    # User details does not exist, create it.
-    except Exception:
-        user_details = UserDetails(user=user)
-        user_details.save()
-
-    # Invalid session
-    if not django_session.get("omnidb_session"):
-        # creating session key to use it
-        django_session.save()
-
-        v_session = Session(
-            user.id,
-            user.username,
-            "light",
-            user_details.font_size,
-            user.is_superuser,
-            django_session.session_key,
-            user_details.csv_encoding,
-            user_details.csv_delimiter,
-        )
-
-        django_session["omnidb_session"] = v_session
-    return redirect(
+    return RedirectResponse(
         settings.PATH
         + f"/workspace?{settings.SESSION_COOKIE_NAME}={django_session.session_key}"
     )

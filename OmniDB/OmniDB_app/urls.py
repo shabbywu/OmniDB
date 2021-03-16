@@ -35,39 +35,42 @@ base_urlpatterns = [
     url(r"^omnidb_login/", views.login.index, name="login"),
     url(r"^logout/", views.login.logout, name="logout"),
     url(r"^sign_in/$", views.login.sign_in, name="sign_in"),
+
     # CONNECTIONS
-    url(r"^edit_group/$", views.connections.edit_group, name="edit_group"),
-    url(r"^delete_group/$", views.connections.delete_group, name="delete_group"),
+    url(r"^edit_group/$", views.fastapi.dispatch_fastapi_view, name="edit_group"),
+    url(r"^delete_group/$", views.fastapi.dispatch_fastapi_view, name="delete_group"),
     url(
-        r"^get_connections/$", views.connections.get_connections, name="get_connections"
+        r"^get_connections/$", views.fastapi.dispatch_fastapi_view, name="get_connections"
     ),
     url(
-        r"^save_connection/$", views.connections.save_connection, name="save_connection"
+        r"^save_connection/$", views.fastapi.dispatch_fastapi_view, name="save_connection"
     ),
     url(
         r"^delete_connection/$",
-        views.connections.delete_connection,
+        views.fastapi.dispatch_fastapi_view,
         name="delete_connection",
     ),
     url(
-        r"^test_connection/$", views.connections.test_connection, name="test_connection"
+        r"^test_connection/$", views.fastapi.dispatch_fastapi_view, name="test_connection"
     ),
-    url(r"^get_groups/$", views.connections.get_groups, name="get_groups"),
-    url(r"^new_group/$", views.connections.new_group, name="new_group"),
+    url(r"^get_groups/$", views.fastapi.dispatch_fastapi_view, name="get_groups"),
+    url(r"^new_group/$", views.fastapi.dispatch_fastapi_view, name="new_group"),
     url(
         r"^save_group_connections/$",
-        views.connections.save_group_connections,
+        views.fastapi.dispatch_fastapi_view,
         name="save_group_connections",
     ),
+
     # USERS
     url(r"^get_users/$", views.users.get_users, name="get_users"),
     url(r"^new_user/$", views.users.new_user, name="new_user"),
     url(r"^remove_user/$", views.users.remove_user, name="remove_user"),
     url(r"^save_users/$", views.users.save_users, name="save_users"),
+
     # WORKSPACE
-    url(r"^workspace/", views.workspace.index, name="workspace"),
-    url(r"^shortcuts/", views.workspace.shortcuts, name="shortcuts"),
-    url(r"^close_welcome/", views.workspace.close_welcome, name="close_welcome"),
+    url(r"^workspace/", views.fastapi.dispatch_fastapi_view, name="workspace"),
+    url(r"^shortcuts/", views.fastapi.dispatch_fastapi_view, name="shortcuts"),
+    url(r"^close_welcome/", views.fastapi.dispatch_fastapi_view, name="close_welcome"),
     url(
         r"^save_config_user/",
         views.fastapi.dispatch_fastapi_view,

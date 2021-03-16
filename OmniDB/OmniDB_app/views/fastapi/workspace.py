@@ -1,10 +1,14 @@
 import datetime
 from math import ceil
+import random
+import string
+from django.template import loader
 
 import sqlparse
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from fastapi import Depends
+from starlette.responses import HTMLResponse
 from OmniDB_app.models import (
     Connection,
     ConsoleHistory,
@@ -14,10 +18,132 @@ from OmniDB_app.models import (
     Shortcut,
     Tab,
     UserDetails,
+    Technology,
 )
+from OmniDB_app.views.memory_objects import clear_client_object
 from OmniDB_app.views.fastapi import app, dependencies
+from OmniDB_app.include.Session import Session
 
 UserModel = get_user_model()
+
+
+@app.get("/workspace/")
+def index(
+    request=Depends(dependencies.get_django_request),
+    user=Depends(dependencies.get_user),
+    user_details=Depends(dependencies.get_user_detail),
+    v_session=Depends(dependencies.get_or_create_omnidb_session),
+    django_session=Depends(dependencies.get_django_session),
+):
+    v_session.RefreshDatabaseList()
+    # Shortcuts
+    default_shortcuts = []
+    user_shortcuts = []
+
+    shortcut_object = {}
+
+    try:
+        user_shortcuts = Shortcut.objects.filter(user=user)
+        for shortcut in user_shortcuts:
+            shortcut_object[shortcut.code] = {
+                "ctrl_pressed": 1 if shortcut.ctrl_pressed else 0,
+                "shift_pressed": 1 if shortcut.shift_pressed else 0,
+                "alt_pressed": 1 if shortcut.alt_pressed else 0,
+                "meta_pressed": 1 if shortcut.meta_pressed else 0,
+                "shortcut_key": shortcut.key,
+                "os": shortcut.os,
+                "shortcut_code": shortcut.code,
+            }
+    except Exception as exc:
+        pass
+
+    v_show_terminal_option = "false"
+
+    if user_details.theme == "light":
+        theme = "omnidb"
+    else:
+        theme = "omnidb_dark"
+
+    context = {
+        "session": None,
+        "editor_theme": theme,
+        "theme": user_details.theme,
+        "font_size": user_details.font_size,
+        "user_id": user.id,
+        "user_key": django_session.session_key,
+        "user_name": user.username,
+        "super_user": 1 if user.is_superuser else 0,
+        "welcome_closed": 1 if user_details.welcome_closed else 0,
+        "enable_omnichat": 0,
+        "csv_encoding": user_details.csv_encoding,
+        "csv_delimiter": user_details.csv_delimiter,
+        "desktop_mode": settings.DESKTOP_MODE,
+        "omnidb_version": settings.OMNIDB_VERSION,
+        "omnidb_short_version": settings.OMNIDB_SHORT_VERSION,
+        "menu_item": "workspace",
+        "shortcuts": shortcut_object,
+        "tab_token": "".join(
+            random.choice(string.ascii_lowercase + string.digits) for i in range(20)
+        ),
+        "show_terminal_option": v_show_terminal_option,
+        "url_folder": settings.PATH,
+        "csrf_cookie_name": settings.CSRF_COOKIE_NAME,
+    }
+
+    # wiping saved tabs databases list
+    v_session.v_tabs_databases = dict([])
+
+    clear_client_object(p_client_id=django_session.session_key)
+
+    template = loader.get_template("OmniDB_app/workspace.html")
+    return HTMLResponse(template.render(context, request))
+
+
+@app.get("/welcome/")
+def welcome(
+    request=Depends(dependencies.get_django_request),
+    user=Depends(dependencies.get_user),
+):
+
+    context = {
+        "omnidb_version": settings.OMNIDB_VERSION,
+        "omnidb_short_version": settings.OMNIDB_SHORT_VERSION,
+    }
+
+    template = loader.get_template("OmniDB_app/welcome.html")
+    return HTMLResponse(template.render(context, request))
+
+
+@app.get("/shortcuts/")
+def shortcuts(
+    request=Depends(dependencies.get_django_request),
+    user=Depends(dependencies.get_user),
+):
+
+    context = {
+        "omnidb_version": settings.OMNIDB_VERSION,
+        "omnidb_short_version": settings.OMNIDB_SHORT_VERSION,
+    }
+
+    template = loader.get_template("OmniDB_app/shortcuts.html")
+    return HTMLResponse(template.render(context, request))
+
+
+@app.post("/close_welcome/")
+def close_welcome(
+    user=Depends(dependencies.get_user),
+    json_object=Depends(dependencies.parse_json_object),
+    v_session=Depends(dependencies.get_omnidb_session),
+    v_return=Depends(dependencies.get_default_return),
+):
+    try:
+        user_details = UserDetails.objects.get(user=user)
+        user_details.welcome_closed = True
+        user_details.save()
+    except Exception:
+        pass
+
+    return v_return
 
 
 @app.post("/save_config_user/")
@@ -1031,3 +1157,38 @@ def get_autocomplete_results(
     }
 
     return v_return
+
+
+# TODO: sign in and add connection
+def sign_in_with_connection(
+    user=Depends(dependencies.get_user),
+    # TODO: replace with database object
+    json_object=Depends(dependencies.parse_json_object),
+    v_session: Session = Depends(dependencies.get_omnidb_session),
+    v_return=Depends(dependencies.get_default_return),
+):
+    # TODO: remove NotSet
+    conn, _ = Connection.objects.update_or_create(
+        user=user,
+        technology=Technology.objects.get(name=json_object["type"]),
+        server=json_object["server"],
+        port=json_object["port"],
+        database=json_object["database"],
+        username=json_object["user"],
+        defaults=dict(
+            password=json_object["password"],
+            alias=json_object["title"],
+            ssh_server=json_object["tunnel"]["server"],
+            ssh_port=json_object["tunnel"]["port"],
+            ssh_user=json_object["tunnel"]["user"],
+            ssh_password=json_object["tunnel"]["password"],
+            ssh_key=json_object["tunnel"]["key"],
+            use_tunnel=json_object["tunnel"]["enabled"],
+            conn_string=json_object["connstring"],
+            public=json_object["public"],
+        )
+    )
+    conn.save()
+    v_session.AddDatabase(
+
+    )
