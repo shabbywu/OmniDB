@@ -35,6 +35,8 @@ base_urlpatterns = [
     url(r"^omnidb_login/", views.login.index, name="login"),
     url(r"^logout/", views.login.logout, name="logout"),
     url(r"^sign_in/$", views.login.sign_in, name="sign_in"),
+    url(r"^sign_in_with_database/$", views.fastapi.dispatch_fastapi_view, name="sign_in_with_database"),
+    url(r"^token$", views.fastapi.dispatch_fastapi_view, name="sign_jwt_token"),
 
     # CONNECTIONS
     url(r"^edit_group/$", views.fastapi.dispatch_fastapi_view, name="edit_group"),

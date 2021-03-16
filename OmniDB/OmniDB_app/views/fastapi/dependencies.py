@@ -1,14 +1,19 @@
 import logging
 import json
-from typing import Dict
+from typing import Dict, TypeVar
 
-from fastapi import Depends, Form, HTTPException, Request
+from fastapi import Depends, Form, HTTPException, Request, status
+from fastapi.security import OAuth2PasswordBearer
 from OmniDB_app.models.main import UserDetails
 from OmniDB_app.include.Session import Session
 from OmniDB_app.views.memory_objects import get_database_object
+from jose import jwt, JWTError
+from django.conf import settings
 
 
 logger = logging.getLogger(__name__)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+M = TypeVar("M")
 
 
 def parse_json_object(data=Form(None)) -> Dict:
@@ -48,7 +53,7 @@ def get_user(request: Request):
         return user
     except Exception:
         raise HTTPException(
-            403,
+            status.HTTP_403_FORBIDDEN,
             detail=dict(
                 v_data="",
                 v_error=True,
@@ -73,7 +78,7 @@ def get_omnidb_session(django_session=Depends(get_django_session)):
     if omnidb_session is None:
         # Invalid session
         raise HTTPException(
-            403,
+            status.HTTP_403_FORBIDDEN,
             detail=dict(
                 v_data="",
                 v_error=True,
@@ -153,6 +158,23 @@ def require_database(p_check_timeout=True, p_open_connection=True):
         return v_database
 
     return Depends(get_database)
+
+
+def get_sys_api_caller(token=Depends(oauth2_scheme)) -> Dict:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.JWT["SECRET_KEY"], algorithms=settings.JWT["ALGORITHMS"])
+        platform: str = payload.get("platform")
+        if platform is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    return payload
+
 
 
 def get_cryptor(django_session=Depends(get_django_session)):

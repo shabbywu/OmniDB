@@ -18,11 +18,9 @@ from OmniDB_app.models import (
     Shortcut,
     Tab,
     UserDetails,
-    Technology,
 )
 from OmniDB_app.views.memory_objects import clear_client_object
 from OmniDB_app.views.fastapi import app, dependencies
-from OmniDB_app.include.Session import Session
 
 UserModel = get_user_model()
 
@@ -1157,38 +1155,3 @@ def get_autocomplete_results(
     }
 
     return v_return
-
-
-# TODO: sign in and add connection
-def sign_in_with_connection(
-    user=Depends(dependencies.get_user),
-    # TODO: replace with database object
-    json_object=Depends(dependencies.parse_json_object),
-    v_session: Session = Depends(dependencies.get_omnidb_session),
-    v_return=Depends(dependencies.get_default_return),
-):
-    # TODO: remove NotSet
-    conn, _ = Connection.objects.update_or_create(
-        user=user,
-        technology=Technology.objects.get(name=json_object["type"]),
-        server=json_object["server"],
-        port=json_object["port"],
-        database=json_object["database"],
-        username=json_object["user"],
-        defaults=dict(
-            password=json_object["password"],
-            alias=json_object["title"],
-            ssh_server=json_object["tunnel"]["server"],
-            ssh_port=json_object["tunnel"]["port"],
-            ssh_user=json_object["tunnel"]["user"],
-            ssh_password=json_object["tunnel"]["password"],
-            ssh_key=json_object["tunnel"]["key"],
-            use_tunnel=json_object["tunnel"]["enabled"],
-            conn_string=json_object["connstring"],
-            public=json_object["public"],
-        )
-    )
-    conn.save()
-    v_session.AddDatabase(
-
-    )

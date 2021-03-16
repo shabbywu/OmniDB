@@ -194,7 +194,7 @@ LOGGING = {
         "console_omnidb_app": {
             "class": "logging.StreamHandler",
             "formatter": "standard",
-            "level": "ERROR",
+            "level": "DEBUG",
         },
     },
     "loggers": {
@@ -222,3 +222,8 @@ CH_CMDS_PER_PAGE = 20
 PWD_TIMEOUT_TOTAL = 1800
 PWD_TIMEOUT_REFRESH = 300
 THREAD_POOL_MAX_WORKERS = 2
+
+JWT = dict(
+    SECRET_KEY=os.environ.get("JWT_SECRET_KEY", "fake-jwt-key"),
+    ALGORITHMS=["HS256"],
+)
