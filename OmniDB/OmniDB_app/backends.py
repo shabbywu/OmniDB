@@ -6,6 +6,3 @@ class DBSRemoteUserBackend(RemoteUserBackend):
         user.password = user.username
         user.save()
         return user
-
-
-backend = DBSRemoteUserBackend()

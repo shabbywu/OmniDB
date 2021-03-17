@@ -12,7 +12,6 @@ from OmniDB_app.views.fastapi import app, dependencies, schemas
 from OmniDB_app.include import OmniDatabase
 from fastapi.security import OAuth2PasswordRequestForm
 from contextlib import contextmanager
-from OmniDB_app.backends import backend
 
 
 logger = logging.getLogger(__name__)
@@ -72,8 +71,7 @@ def sign_in_with_database(
     v_return=Depends(dependencies.get_default_return),
     sys_user=Depends(dependencies.get_sys_api_caller),
 ):
-    # TODO: replace with RemoteUserBackend
-    user = backend.authenticate(request, remote_user=payload.username)
+    user = authenticate(request, remote_user=payload.username)
     login(request, user)
 
     with contextmanager(dependencies.get_or_create_omnidb_session)(

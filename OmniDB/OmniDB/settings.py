@@ -116,7 +116,7 @@ ASGI_APPLICATION = "OmniDB.asgi.application"
 # AUTH_LDAP_GROUP_CACHE_TIMEOUT = 1  # 1 hour cache
 
 AUTHENTICATION_BACKENDS = [
-    #'django_auth_ldap.backend.LDAPBackend',
+    "OmniDB_app.backends.DBSRemoteUserBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
 
