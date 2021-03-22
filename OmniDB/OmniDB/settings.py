@@ -36,6 +36,9 @@ DATABASES = {
     }
 }
 
+X_FRAME_OPTIONS = 'Allow'
+
+
 if DEBUG:
     SECRET_KEY = "ijbq-+%n_(_^ct+qnqp%ir8fzu3n#q^i71j4&y#-6#qe(dx!h3"
 else:
