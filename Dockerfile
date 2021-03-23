@@ -1,4 +1,4 @@
-FROM python:3.7.9-slim-buster
+FROM python:latest
 USER root
 
 RUN rm /etc/apt/sources.list && \
